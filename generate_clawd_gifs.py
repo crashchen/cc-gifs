@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw
 import math
 import os
 import random
+import unicodedata
 
 # ---------------------------------------------------------------------------
 # Colours
@@ -227,11 +228,26 @@ FONT_PX = 4
 # ---------------------------------------------------------------------------
 # Drawing helpers
 # ---------------------------------------------------------------------------
+def resolve_font_glyph(ch):
+    """Return the best available glyph, degrading accented Latin chars to base forms."""
+    if ch in FONT_GLYPHS:
+        return FONT_GLYPHS[ch]
+
+    decomposed = unicodedata.normalize('NFKD', ch)
+    for candidate in decomposed:
+        if unicodedata.combining(candidate):
+            continue
+        if candidate in FONT_GLYPHS:
+            return FONT_GLYPHS[candidate]
+
+    return FONT_GLYPHS[' ']
+
+
 def draw_text(draw, text, start_x, start_y, color=CORAL, scale=FONT_PX):
     """Render text using the pixel font."""
     cx = start_x
     for ch in text:
-        glyph = FONT_GLYPHS.get(ch, FONT_GLYPHS.get(' '))
+        glyph = resolve_font_glyph(ch)
         for row_i, row in enumerate(glyph):
             for col_i, pixel in enumerate(row):
                 if pixel == '1':
@@ -245,7 +261,7 @@ def text_width(text, scale=FONT_PX):
     """Return the rendered width of text in the pixel font."""
     width = 0
     for ch in text:
-        glyph = FONT_GLYPHS.get(ch, FONT_GLYPHS.get(' '))
+        glyph = resolve_font_glyph(ch)
         width += (len(glyph[0]) + 1) * scale
     return width
 
@@ -5205,6 +5221,277 @@ def save_gif(frames, filename, duration=170):
 
 
 # ---------------------------------------------------------------------------
+# New batch: Billowing, Bloviating, Sautéing, Scampering, Caramelizing, Gesticulating
+# ---------------------------------------------------------------------------
+
+def sc_billowing(draw, f, img):
+    """Clawd amid rolling, layered plumes that swell and unfurl outward."""
+    draw_clawd(draw, 34, 170, g, blink=(f == 3))
+
+    drift = [-10, -4, 4, 12, 18, 10][f]
+    swell = [0, 6, 12, 18, 12, 6][f]
+    back = (210, 218, 230)
+    mid = (236, 240, 246)
+    front = WHITE
+
+    plume_clusters = [
+        (222 + drift, 138, 1.0),
+        (282 + drift, 122, 1.1),
+        (248 + drift, 206, 1.25),
+    ]
+    for fill, offset in [(back, 12), (mid, 6), (front, 0)]:
+        for cx, cy, scale in plume_clusters:
+            rx1 = int((38 + swell + offset) * scale)
+            ry1 = int((24 + swell // 2 + offset // 2) * scale)
+            rx2 = int((48 + swell + offset) * scale)
+            ry2 = int((30 + swell // 2 + offset // 2) * scale)
+            rx3 = int((34 + swell // 2 + offset) * scale)
+            ry3 = int((20 + swell // 3 + offset // 2) * scale)
+            draw.ellipse([cx - rx1, cy - ry1, cx + rx1, cy + ry1], fill=fill)
+            draw.ellipse([cx - 16, cy - ry2 - 6, cx + rx2, cy + ry2 - 10], fill=fill)
+            draw.ellipse([cx - rx3 - 26, cy + 2, cx + rx3 - 24, cy + ry3 + 8], fill=fill)
+            draw.ellipse([cx - rx3 + 18, cy + 8, cx + rx3 + 20, cy + ry3 + 14], fill=fill)
+
+    curl_specs = [
+        (200 + drift, 124, 34, 22, LIGHT_BLUE),
+        (250 + drift, 106, 44, 28, TEAL),
+        (314 + drift, 154, 38, 24, LIGHT_BLUE),
+        (224 + drift, 216, 40, 24, TEAL),
+    ]
+    for i, (cx, cy, rx, ry, color) in enumerate(curl_specs):
+        draw.arc([cx - rx, cy - ry, cx + rx, cy + ry], 190 + i * 8, 10 + i * 8, fill=color, width=2)
+        draw.arc([cx - rx // 2, cy - ry // 2, cx + rx // 2, cy + ry // 2], 210, 30, fill=color, width=2)
+
+    for i in range(5):
+        sx = 168 + i * 36 + drift // 2
+        sy = 116 + (i % 2) * 42 - (f % 2) * 4
+        draw.rectangle([sx, sy, sx + 4, sy + 4], fill=YELLOW if i % 2 == 0 else WHITE)
+
+
+def sc_bloviating(draw, f, img):
+    """Clawd loudly over-explaining into a megaphone as speech swells outward."""
+    clawd_x, clawd_y = 34, 170
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+
+    paw_x = clawd_x + 10 * g
+    paw_y = clawd_y + 2 * g + g // 2
+    horn_x = 192
+    horn_y = 220
+    draw.line([paw_x, paw_y, horn_x, horn_y], fill=GRAY, width=3)
+    draw.rectangle([horn_x - 18, horn_y - 8, horn_x + 4, horn_y + 8], fill=DARK_GRAY)
+    draw.polygon([
+        (horn_x + 4, horn_y - 18),
+        (horn_x + 56, horn_y - 32),
+        (horn_x + 56, horn_y + 32),
+        (horn_x + 4, horn_y + 18),
+    ], fill=RED)
+    draw.polygon([
+        (horn_x + 10, horn_y - 12),
+        (horn_x + 48, horn_y - 22),
+        (horn_x + 48, horn_y + 22),
+        (horn_x + 10, horn_y + 12),
+    ], fill=LIGHT_CORAL)
+
+    bubble_w = [82, 96, 118, 138, 154, 132][f]
+    bubble_h = [46, 54, 64, 74, 82, 70][f]
+    bx = 214
+    by = 70 + [10, 6, 2, 0, -4, 2][f]
+    draw.ellipse([bx, by, bx + bubble_w, by + bubble_h], fill=WHITE, outline=BLACK)
+    draw.ellipse([bx + 18, by - 12, bx + bubble_w - 8, by + bubble_h - 6], fill=WHITE, outline=BLACK)
+    draw.polygon([
+        (bx + 14, by + bubble_h - 4),
+        (bx - 14, by + bubble_h + 10),
+        (bx + 28, by + bubble_h - 12),
+    ], fill=WHITE, outline=BLACK)
+
+    for i in range(3):
+        sound_r = 20 + i * 16 + f * 2
+        draw.arc([horn_x + 18 - sound_r, horn_y - sound_r, horn_x + 18 + sound_r, horn_y + sound_r],
+                 310, 50, fill=[YELLOW, ORANGE, RED][i], width=2)
+
+    draw_text(draw, "BLAH", bx + 18, by + 18, color=RED, scale=4 if f >= 2 else 3)
+    if f >= 1:
+        draw_text(draw, "BLAH", bx + 34, by + 46, color=ORANGE, scale=2 if f < 4 else 3)
+    if f >= 3:
+        draw_text(draw, "!?", bx + bubble_w - 42, by + 12, color=PURPLE, scale=3)
+    if f >= 4:
+        for sx, sy in [(bx + bubble_w - 18, by + 28), (bx + bubble_w - 44, by + bubble_h - 10)]:
+            draw_text(draw, "*", sx, sy, color=YELLOW, scale=2)
+
+
+def sc_sauteing(draw, f, img):
+    """Clawd tossing food in a hot wok with oil splashes and flame."""
+    draw_clawd(draw, 30, 160, g)
+
+    # Wok body
+    wok_x, wok_y = 210, 235
+    draw.arc([wok_x, wok_y, wok_x + 120, wok_y + 60], 0, 180, fill=DARK_GRAY, width=4)
+    draw.rectangle([wok_x, wok_y + 28, wok_x + 120, wok_y + 32], fill=DARK_GRAY)
+    # Wok handle toward Clawd's paw
+    draw.rectangle([wok_x - 30, wok_y + 22, wok_x + 4, wok_y + 30], fill=BROWN)
+    # Paw on handle
+    draw.rectangle([wok_x - 32, wok_y + 19, wok_x - 20, wok_y + 33], fill=CORAL)
+
+    # Flame under wok
+    flame_bob = [0, -3, -1, 2, 0, -2][f]
+    flame_colors = [RED, ORANGE, YELLOW]
+    for i, fc in enumerate(flame_colors):
+        fx = wok_x + 30 + i * 25
+        fy = wok_y + 34 + flame_bob * (1 if i % 2 == 0 else -1)
+        draw.polygon([(fx, fy + 16), (fx + 8, fy), (fx + 16, fy + 16)], fill=fc)
+
+    # Food tossing in air
+    toss_heights = [0, -18, -34, -38, -22, -6]
+    food_items = [(wok_x + 25, ORANGE), (wok_x + 50, GREEN), (wok_x + 80, RED)]
+    for i, (fx, fc) in enumerate(food_items):
+        th = toss_heights[(f + i) % NUM_FRAMES]
+        fy = wok_y + 10 + th
+        draw.rectangle([fx, fy, fx + 14, fy + 10], fill=fc)
+
+    # Oil splashes
+    if f in [1, 2, 3]:
+        for i in range(3):
+            sx = wok_x + 20 + i * 35
+            sy = wok_y - 5 - f * 6 - i * 4
+            draw.rectangle([sx, sy, sx + 3, sy + 3], fill=YELLOW)
+
+
+def sc_scampering(draw, f, img):
+    """Clawd bouncing forward rapidly with dust puffs behind."""
+    # Clawd moves right and bounces
+    cx = 40 + f * 22
+    bounce = [0, -14, -6, 0, -14, -6][f]
+    draw_clawd(draw, cx, 175 + bounce, g)
+
+    # Dust puffs trailing behind
+    for i in range(min(f, 4)):
+        age = f - i
+        dx = 30 + i * 22
+        dy = 290 + age * 2
+        r = max(3, 12 - age * 3)
+        alpha_grey = min(200, 80 + (4 - age) * 30)
+        c = (alpha_grey, alpha_grey, alpha_grey)
+        draw.ellipse([dx - r, dy - r, dx + r, dy + r], fill=c)
+
+    # Speed lines
+    for i in range(4):
+        ly = 185 + i * 14 + bounce
+        lx = cx - 10
+        draw.line([lx - 30 - f * 3, ly, lx - 8, ly], fill=GRAY, width=1)
+
+    # Tiny footprint marks on ground
+    for i in range(min(f + 1, 5)):
+        fpx = 50 + i * 28
+        draw.rectangle([fpx, 308, fpx + 6, 312], fill=DARK_BROWN)
+        draw.rectangle([fpx + 10, 306, fpx + 16, 310], fill=DARK_BROWN)
+
+
+def sc_caramelizing(draw, f, img):
+    """Sugar crystals melting into golden caramel in a pan, bubbling."""
+    draw_clawd(draw, 30, 155, g)
+
+    # Pan
+    pan_x, pan_y = 200, 240
+    draw.rectangle([pan_x, pan_y, pan_x + 140, pan_y + 16], fill=DARK_GRAY)
+    draw.rectangle([pan_x + 140, pan_y + 2, pan_x + 185, pan_y + 12], fill=BROWN)
+
+    # Caramel stages: white sugar → golden → deep amber
+    stage = f / (NUM_FRAMES - 1)  # 0.0 to 1.0
+    r = int(255 - stage * 55)
+    gr = int(255 - stage * 105)
+    b = int(255 - stage * 195)
+    caramel_color = (r, gr, b)
+    draw.rectangle([pan_x + 8, pan_y - 14, pan_x + 132, pan_y], fill=caramel_color)
+
+    # Sugar crystals (fade out as melting progresses)
+    if f < 4:
+        for i in range(6 - f):
+            sx = pan_x + 15 + i * 20
+            sy = pan_y - 10
+            draw.rectangle([sx, sy, sx + 5, sy + 5], fill=WHITE)
+
+    # Bubbles rising from surface
+    for i in range(3):
+        bx = pan_x + 30 + i * 35
+        by = pan_y - 18 - ((f * 5 + i * 8) % 30)
+        br = 3 + (f + i) % 3
+        draw.ellipse([bx, by, bx + br * 2, by + br * 2], outline=caramel_color, width=1)
+
+    # Warm glow underneath pan
+    glow_colors = [(255, 160, 60), (255, 130, 40), (255, 100, 20)]
+    gc = glow_colors[f % 3]
+    draw.rectangle([pan_x + 20, pan_y + 18, pan_x + 120, pan_y + 24], fill=gc)
+
+    # Steam wisps
+    draw_steam(draw, pan_x + 60, pan_y - 30, f)
+
+
+def frames_gesticulating():
+    """Clawd waving arms wildly with motion lines and punctuation symbols overhead."""
+    frames = []
+    num_frames = 8
+    # Arm wave patterns: (left_arm_angle, right_arm_angle) in pixel offsets
+    arm_poses = [
+        (-20, 20), (-30, -10), (10, -30), (25, 15),
+        (-15, -25), (-30, 20), (20, -20), (5, 25),
+    ]
+    symbols = ['!', '?', '#', '*', '!', '?', '#', '!']
+    sym_colors = [RED, BLUE, PURPLE, YELLOW, ORANGE, GREEN, PINK, RED]
+
+    for f in range(num_frames):
+        set_current_frame(f)
+        img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
+        draw = ImageDraw.Draw(img)
+
+        sway = [-3, 0, 4, 2, -4, 1, 3, -2][f]
+        clawd_x = 130 + sway
+        clawd_y = 175
+        draw_clawd(draw, clawd_x, clawd_y, g)
+
+        # Animated arm extensions (motion lines radiating from arm ends)
+        la, ra = arm_poses[f]
+        # Left arm motion lines
+        lax = clawd_x - 2 * g
+        lay = clawd_y + 2 * g + g // 2
+        for i in range(3):
+            ex = lax - 15 - i * 10 + la
+            ey = lay - 10 + la // 2 + i * 6
+            draw.line([lax - 4, lay, ex, ey], fill=GRAY, width=1)
+        # Right arm motion lines
+        rax = clawd_x + 8 * g + 2 * g
+        ray = clawd_y + 2 * g + g // 2
+        for i in range(3):
+            ex = rax + 15 + i * 10 + ra
+            ey = ray - 10 + ra // 2 + i * 6
+            draw.line([rax + 4, ray, ex, ey], fill=GRAY, width=1)
+
+        # Punctuation symbols floating above head
+        for i in range(3):
+            si = (f + i) % num_frames
+            sx = clawd_x + g + i * 40 + [0, 5, -3, 2, -5, 3, 0, -2][si]
+            sy = clawd_y - 40 - i * 18 + [-4, -8, -12, -8, -4, 0, -6, -10][si]
+            draw_text(draw, symbols[si], sx, sy, color=sym_colors[si], scale=3)
+
+        # Emphatic burst lines around body
+        burst_len = 8 + (f % 3) * 4
+        for angle_deg in range(0, 360, 45):
+            rad = math.radians(angle_deg + f * 12)
+            bcx = clawd_x + 4 * g
+            bcy = clawd_y + 3 * g
+            r_inner = 80 + (f % 2) * 4
+            r_outer = r_inner + burst_len
+            x1 = bcx + int(math.cos(rad) * r_inner)
+            y1 = bcy + int(math.sin(rad) * r_inner)
+            x2 = bcx + int(math.cos(rad) * r_outer)
+            y2 = bcy + int(math.sin(rad) * r_outer)
+            draw.line([x1, y1, x2, y2], fill=ORANGE, width=2)
+
+        draw_loading_label(draw, "Gesticulating", f)
+        frames.append(img)
+    return frames
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main():
@@ -5255,6 +5542,7 @@ def main():
         "Herding": frames_herding,
         "Honking": frames_honking,
         "Hullaballooing": frames_hullaballooing,
+        "Gesticulating": frames_gesticulating,
         "Nucleating": frames_nucleating,
         "Osmosing": frames_osmosing,
         "Prestidigitating": frames_prestidigitating,
@@ -5271,6 +5559,8 @@ def main():
 
     # Compact scene generators rendered through make_frames().
     scene_generators = {
+        "Billowing": sc_billowing,
+        "Bloviating": sc_bloviating,
         "Gusting": sc_gusting,
         "Hustling": sc_hustling,
         "Ideating": sc_ideating,
@@ -5327,6 +5617,9 @@ def main():
         "Whirring": sc_whirring,
         "Wibbling": sc_wibbling,
         "Wizarding": sc_wizarding,
+        "Sautéing": sc_sauteing,
+        "Scampering": sc_scampering,
+        "Caramelizing": sc_caramelizing,
     }
     # Normalize both generator styles into one output registry.
     for word, scene_fn in scene_generators.items():

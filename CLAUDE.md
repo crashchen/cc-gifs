@@ -10,8 +10,12 @@ A creative playground for generating Clawd (Claude Code mascot) pixel art spinne
 
 - `generate_clawd_gifs.py` — Unified generator script: draws Clawd pixel art, defines both full `frames_*()` animations and compact `sc_*()` scenes, and outputs transparent GIFs
 - `generated/` — Runtime output directory for generated GIFs (kept out of git)
-- `spinner-words.md` — Official catalog of all `110` spinner words with status tracking, Chinese translations, and descriptions
+- `spinner-words.md` — Official catalog of all `116` spinner words with status tracking, Chinese translations, and descriptions
 - `README.md` — Public repo overview and usage guide
+- `AGENTS.md` — Pointer file for Codex and other coding agents, redirects to `CLAUDE.md`
+- `requirements.txt` — Minimal runtime dependency list (`Pillow`)
+- `LICENSE` — MIT license for repository code
+- `.gitignore` — Excludes `generated/`, `*.gif`, `*.png`, `*.jpg`, `*.jpeg`, `.DS_Store`, `__pycache__/`
 - Local-only reference screenshots, reference GIFs, and sticker/source assets are intentionally excluded from this public repository
 
 ## GIF Generation
@@ -27,6 +31,7 @@ python3 generate_clawd_gifs.py
   - `Catapulting` — `8` frames
   - `Cultivating` — `12` frames
   - `Germinating` — `12` frames
+  - `Gesticulating` — `8` frames
   - `Cascading` — `10` frames
   - `Channelling` — `8` frames
   - `Choreographing` — `8` frames
@@ -42,7 +47,7 @@ python3 generate_clawd_gifs.py
   - `Transmuting` — `8` frames
   - `Tinkering` — `8` frames
   - `Thundering` — `8` frames
-- The generator currently covers `110` official spinner words
+- The generator currently covers `116` official spinner words
 - `generate_clawd_gifs.py` supports two internal scene styles:
   - handcrafted `frames_*()` functions that return complete frame lists
   - compact `sc_*()` scene functions rendered through `make_frames()`
@@ -74,6 +79,10 @@ python3 generate_clawd_gifs.py
 - `draw_spotlight()` / `draw_sigil_ring()` — shared stage-lighting and ritual/science ring helpers used across multiple magical scenes
 - `draw_storm_cloud()` / `draw_lightning_bolt()` — storm and lightning helpers
 - `draw_data_card()` / `draw_crystal()` / `draw_fancy_flower()` — specialized helpers for data-wrangling, transmutation, and ornate flower scenes
+- `draw_heart()` / `draw_playing_card()` / `draw_dancer_figure()` — additional scene props for romance, magic-trick, and choreography scenes
+- `draw_clawd_face()` / `draw_clawd_accessories()` / `draw_clawd_icon_accessory()` — Clawd face variant and accessory compositing helpers
+- `draw_clawd_chef_hat()` / `draw_clawd_wizard_hat()` / `draw_clawd_helmet()` / `draw_clawd_headphones()` — costume headgear helpers for cooking, wizarding, spelunking, and music scenes
+- `draw_clawd_camera()` / `draw_clawd_magnifier()` / `draw_clawd_tool()` — hand-held prop helpers for various scenes
 - `save_gif()` — converts RGBA frames into a GIF using a shared palette and fixed transparency index after magenta-key compositing, so all frames keep consistent transparent backgrounds
 
 ### Adding a New Spinner

@@ -13,9 +13,10 @@ This repository is an unofficial technical/art experiment. The code in this repo
 ## What’s Included
 
 - `generate_clawd_gifs.py`: the unified generator for all official Clawd spinner scenes
-- `spinner-words.md`: the full official catalog of 110 spinner words with Chinese translations and descriptions
+- `spinner-words.md`: the full official catalog of 116 spinner words with Chinese translations and descriptions
 - `CLAUDE.md` and `AGENTS.md`: working notes and agent-facing repository instructions
 - `requirements.txt`: minimal runtime dependency list
+- `LICENSE`: MIT license for repository code
 
 ## What’s Not Included
 
@@ -45,14 +46,16 @@ Generated GIFs are written to:
 generated/Clawd-{Word}.gif
 ```
 
-The generator currently covers **110 official spinner words**. Most compact scenes render as 6-frame loops at 170ms per frame, while some handcrafted scenes use longer timelines.
+The generator currently covers **116 official spinner words**. Most compact scenes render as 6-frame loops at 170ms per frame, while some handcrafted scenes use longer timelines.
 
 ## Project Structure
 
 ```text
 .
+├── .gitignore
 ├── AGENTS.md
 ├── CLAUDE.md
+├── LICENSE
 ├── README.md
 ├── generate_clawd_gifs.py
 ├── requirements.txt
