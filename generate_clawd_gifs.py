@@ -430,14 +430,33 @@ def draw_clawd_headphones(draw, anchors, grid, palette):
 
 def draw_clawd_chef_hat(draw, anchors, grid, palette, tall=False):
     top_x, top_y = anchors["head_top_center"]
-    brim_w = int(grid * 4.8)
+    brim_w = int(grid * (5.6 if tall else 4.9))
     brim_h = max(6, grid // 2)
-    body_h = int(grid * (2.6 if tall else 1.4))
-    top_h = int(grid * (1.5 if tall else 1.0))
-    brim_y = top_y - int(grid * 0.45)
+    neck_w = int(grid * (3.0 if tall else 2.6))
+    neck_h = int(grid * (1.7 if tall else 1.15))
+    lobe_r = int(grid * (1.15 if tall else 0.95))
+    crown_r = int(grid * (1.65 if tall else 1.3))
+    brim_y = top_y - int(grid * 0.42)
+    neck_top = brim_y - neck_h
+    crown_y = neck_top - crown_r + max(2, grid // 8)
+    fold = (216, 216, 216)
+
     draw.rectangle([top_x - brim_w // 2, brim_y, top_x + brim_w // 2, brim_y + brim_h], fill=WHITE, outline=palette["gray"])
-    draw.rectangle([top_x - int(grid * 1.7), brim_y - body_h, top_x + int(grid * 1.7), brim_y], fill=WHITE, outline=palette["gray"])
-    draw.rectangle([top_x - int(grid * 1.1), brim_y - body_h - top_h, top_x + int(grid * 1.1), brim_y - body_h], fill=WHITE, outline=palette["gray"])
+    draw.line([top_x - brim_w // 2 + 6, brim_y + 2, top_x + brim_w // 2 - 6, brim_y + 2], fill=fold, width=1)
+
+    draw.rectangle([top_x - neck_w // 2, neck_top, top_x + neck_w // 2, brim_y], fill=WHITE, outline=palette["gray"])
+    draw.line([top_x - neck_w // 2 + 4, neck_top + 4, top_x + neck_w // 2 - 4, neck_top + 4], fill=fold, width=1)
+
+    left_box = [top_x - crown_r - lobe_r + 4, crown_y + 6, top_x - 4, crown_y + crown_r + 12]
+    center_box = [top_x - lobe_r - 4, crown_y - 4, top_x + lobe_r + 4, crown_y + crown_r + 10]
+    right_box = [top_x + 4, crown_y + 6, top_x + crown_r + lobe_r - 4, crown_y + crown_r + 12]
+    for box in (left_box, center_box, right_box):
+        draw.ellipse(box, fill=WHITE, outline=palette["gray"])
+
+    draw.line([top_x - neck_w // 2 + 3, neck_top, top_x - neck_w // 2 + 3, brim_y - 2], fill=fold, width=1)
+    draw.line([top_x + neck_w // 2 - 3, neck_top, top_x + neck_w // 2 - 3, brim_y - 2], fill=fold, width=1)
+    draw.arc([top_x - int(grid * 1.1), crown_y + 8, top_x + int(grid * 1.1), crown_y + crown_r + 10], 200, 340, fill=fold, width=1)
+    draw.arc([top_x - int(grid * 0.65), crown_y + 2, top_x + int(grid * 0.65), crown_y + crown_r + 8], 200, 340, fill=fold, width=1)
 
 
 def draw_clawd_wizard_hat(draw, anchors, grid, palette):
@@ -639,6 +658,8 @@ def draw_clawd(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, eye_color=
 
     draw_clawd_face(draw, ox, oy, grid, blink=blink, eye_color=eye_color, wink=wink, mouth=mouth,
                     pose=pose, expression=expression, head_only=False)
+    if accessories:
+        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color, head_only=False)
 
 
 def draw_clawd_head_only(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, eye_color=BLACK, wink=None, mouth=None,
@@ -659,6 +680,8 @@ def draw_clawd_head_only(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, 
 
     draw_clawd_face(draw, ox, oy, grid, blink=blink, eye_color=eye_color, wink=wink, mouth=mouth,
                     pose=pose, expression=expression, head_only=True)
+    if accessories:
+        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color, head_only=True)
 
 
 def draw_mini_clawd(draw, ox, oy, grid=10, **kwargs):
@@ -2197,19 +2220,7 @@ def frames_cooking():
         g = GRID
 
         cx, cy = 30, 150
-        draw_clawd(draw, cx, cy, g)
-
-        # Chef hat (tall toque lifted above the face).
-        hat_x = cx + g + 2
-        brim_y = cy - 14
-        hat_mid_top = cy - 58
-        hat_top = cy - 82
-        draw.rectangle([hat_x + 8, hat_mid_top, hat_x + 4 * g + 8, brim_y], fill=WHITE)
-        draw.rectangle([hat_x, brim_y, hat_x + 5 * g, brim_y + 8], fill=WHITE)
-        draw.rectangle([hat_x + 14, hat_top, hat_x + 3 * g + 14, hat_mid_top], fill=WHITE)
-        draw.rectangle([hat_x + 8, hat_mid_top, hat_x + 4 * g + 8, brim_y], outline=GRAY, width=2)
-        draw.rectangle([hat_x, brim_y, hat_x + 5 * g, brim_y + 8], outline=GRAY, width=2)
-        draw.rectangle([hat_x + 14, hat_top, hat_x + 3 * g + 14, hat_mid_top], outline=GRAY, width=2)
+        draw_clawd(draw, cx, cy, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})])
 
         # Stove (right)
         stove_x, stove_y = 210, 220
@@ -4964,6 +4975,46 @@ def sc_twisting(draw, f, img):
                             fill=colors2[ci])
 
 
+def sc_undulating(draw, f, img):
+    """Clawd rises and falls with layered ribbon-like waves sweeping across the scene."""
+    bob = [8, 2, -6, -10, -4, 4][f]
+    clawd_x = 44
+    clawd_y = 162 + bob
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+
+    base_y = 162
+    wave_specs = [
+        (LIGHT_BLUE, 0, 0.18, 18),
+        (TEAL, 18, 0.22, 16),
+        (BLUE, 34, 0.20, 14),
+    ]
+    for color, y_off, freq, amp in wave_specs:
+        points = []
+        for x in range(136, 391, 10):
+            y = base_y + y_off + int(math.sin((x + f * 26) * freq) * amp)
+            points.append((x, y))
+        for p1, p2 in zip(points, points[1:]):
+            draw.line([p1, p2], fill=color, width=4)
+        for x, y in points[::3]:
+            draw.ellipse([x - 3, y - 3, x + 3, y + 3], fill=color)
+
+    ribbon_points = []
+    for x in range(180, 372, 12):
+        y = 250 + int(math.sin((x + f * 32) * 0.17) * 10)
+        ribbon_points.append((x, y))
+    for p1, p2 in zip(ribbon_points, ribbon_points[1:]):
+        draw.line([p1, p2], fill=WHITE, width=2)
+
+    for i in range(5):
+        sx = 180 + i * 36
+        sy = 118 + ((f + i) % 3) * 10
+        draw_text(draw, "*", sx, sy, color=YELLOW if i % 2 == 0 else WHITE, scale=2)
+    for i in range(4):
+        px = 148 + i * 54
+        py = 286 + int(math.sin((i * 20 + f * 30) * 0.1) * 6)
+        draw.arc([px - 14, py - 6, px + 14, py + 6], 180, 360, fill=LIGHT_BLUE, width=2)
+
+
 def sc_unfurling(draw, f, img):
     draw_clawd(draw, 30, 160, g)
     sx2, sy2 = 230, 120
@@ -5221,7 +5272,11 @@ def save_gif(frames, filename, duration=170):
 
 
 # ---------------------------------------------------------------------------
-# New batch: Billowing, Bloviating, Sautéing, Scampering, Caramelizing, Gesticulating
+# New batch: Billowing, Bloviating, Burrowing, Flambéing, Flummoxing,
+# Fluttering, Inferring, Infusing, Julienning, Sprouting, Swooping,
+# Waddling, Warping, Sautéing, Scampering, Caramelizing, Gesticulating,
+# plus later compact additions like Clauding, Composing, Dilly-dallying,
+# Boondoggling, Undulating, and Zesting
 # ---------------------------------------------------------------------------
 
 def sc_billowing(draw, f, img):
@@ -5317,6 +5372,743 @@ def sc_bloviating(draw, f, img):
     if f >= 4:
         for sx, sy in [(bx + bubble_w - 18, by + 28), (bx + bubble_w - 44, by + bubble_h - 10)]:
             draw_text(draw, "*", sx, sy, color=YELLOW, scale=2)
+
+
+def sc_boondoggling(draw, f, img):
+    """Clawd fusses over an overcomplicated little machine that feels impressively pointless."""
+    clawd_x = 26 + [-2, 0, 2, 0, -2, 1][f]
+    clawd_y = 166 + [0, -2, 0, -2, 0, -1][f]
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("tool", {"tool": "wrench"})])
+
+    base_x, base_y = 214, 252
+    draw.rectangle([base_x, base_y, base_x + 132, base_y + 12], fill=DARK_BROWN)
+    draw.rectangle([base_x + 8, base_y - 42, base_x + 22, base_y], fill=GRAY)
+    draw.rectangle([base_x + 104, base_y - 54, base_x + 116, base_y], fill=GRAY)
+    draw.line([base_x + 22, base_y - 36, base_x + 64, base_y - 70], fill=GRAY, width=3)
+    draw.line([base_x + 64, base_y - 70, base_x + 108, base_y - 52], fill=GRAY, width=3)
+    draw.arc([base_x + 28, base_y - 54, base_x + 74, base_y - 8], 200, 360, fill=LIGHT_BLUE, width=2)
+    draw.arc([base_x + 56, base_y - 52, base_x + 102, base_y - 4], 180, 340, fill=TEAL, width=2)
+
+    gear1_y = base_y - 16
+    gear2_y = base_y - 24
+    draw_gear(draw, base_x + 36, gear1_y, 14, f)
+    draw_gear(draw, base_x + 72, gear2_y, 18, f + 2)
+    draw_gear(draw, base_x + 108, gear1_y - 4, 10, f + 1)
+
+    lever_pivot_x = base_x + 18
+    lever_pivot_y = base_y - 42
+    lever_tip_x = lever_pivot_x + [18, 10, 0, -8, 4, 14][f]
+    lever_tip_y = lever_pivot_y + [-24, -30, -36, -28, -20, -26][f]
+    draw.line([lever_pivot_x, lever_pivot_y, lever_tip_x, lever_tip_y], fill=BROWN, width=3)
+    draw.ellipse([lever_pivot_x - 4, lever_pivot_y - 4, lever_pivot_x + 4, lever_pivot_y + 4], fill=DARK_GRAY)
+    draw.ellipse([lever_tip_x - 6, lever_tip_y - 6, lever_tip_x + 6, lever_tip_y + 6], fill=RED)
+
+    spring_x = base_x + 118
+    spring_top = base_y - 48
+    spring_bottom = base_y - 8
+    zig = [0, 5, -4, 5, -4, 0][f]
+    spring_pts = [
+        (spring_x, spring_bottom),
+        (spring_x - 8 + zig, spring_bottom - 8),
+        (spring_x + 6 - zig, spring_bottom - 16),
+        (spring_x - 8 + zig, spring_bottom - 24),
+        (spring_x + 6 - zig, spring_bottom - 32),
+        (spring_x, spring_top),
+    ]
+    for p1, p2 in zip(spring_pts, spring_pts[1:]):
+        draw.line([p1, p2], fill=GRAY, width=2)
+
+    doodad_x = base_x + 126 + [0, 3, 7, 10, 6, 2][f]
+    doodad_y = base_y - 52 + [0, -6, -12, -6, 0, 4][f]
+    draw.rectangle([doodad_x - 6, doodad_y - 6, doodad_x + 6, doodad_y + 6], fill=YELLOW, outline=ORANGE)
+    draw.line([doodad_x, doodad_y + 6, doodad_x, doodad_y + 18], fill=GRAY, width=1)
+    draw.rectangle([doodad_x - 10, doodad_y + 18, doodad_x + 10, doodad_y + 22], fill=WHITE, outline=GRAY)
+
+    for i in range(3):
+        bx = base_x + 40 + i * 28 + [0, 2, -1, 3, -2, 1][(f + i) % NUM_FRAMES]
+        by = base_y - 78 - ((f + i * 2) % NUM_FRAMES) * 8
+        draw.ellipse([bx - 3, by - 3, bx + 3, by + 3], fill=LIGHT_BLUE if i != 1 else WHITE)
+    draw_text(draw, "?", 166, 124 + (f % 2) * 4, color=PURPLE, scale=3)
+
+
+def sc_clauding(draw, f, img):
+    """Clawd enters a self-referential Claude-like reply loop at a tiny terminal."""
+    clawd_x = 34 + [-2, 0, 2, 0, -2, 1][f]
+    clawd_y = 170 + [0, -2, 0, -2, 0, -1][f]
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+
+    term_x, term_y = 208, 98
+    term_w, term_h = 146, 132
+    draw.rectangle([term_x, term_y, term_x + term_w, term_y + term_h], fill=(246, 246, 250), outline=DARK_GRAY)
+    draw.rectangle([term_x, term_y, term_x + term_w, term_y + 20], fill=DARK_GRAY)
+    for i, color in enumerate([RED, YELLOW, GREEN]):
+        dx = term_x + 10 + i * 12
+        draw.ellipse([dx, term_y + 7, dx + 6, term_y + 13], fill=color)
+
+    avatar_x = term_x + 12
+    avatar_y = term_y + 34
+    draw_mini_clawd(draw, avatar_x, avatar_y, grid=5, blink=(f == 2))
+    bubble_x = term_x + 70
+    bubble_y = term_y + 36
+    bubble_w = [32, 46, 60, 74, 84, 76][f]
+    bubble_h = [18, 22, 26, 30, 34, 30][f]
+    draw.rectangle([bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h], fill=CLAWD_ACCENT_BLUE_LIGHT, outline=CLAWD_ACCENT_BLUE)
+    for i in range(3):
+        line_w = max(10, bubble_w - 16 - i * 10)
+        ly = bubble_y + 6 + i * 8
+        if ly + 3 < bubble_y + bubble_h - 2:
+            draw.rectangle([bubble_x + 8, ly, bubble_x + 8 + line_w, ly + 3], fill=BLACK)
+
+    if f >= 2:
+        nested_x = term_x + 84
+        nested_y = term_y + 84
+        nested_w = 44 + (f - 2) * 8
+        nested_h = 28 + (f - 2) * 4
+        draw.rectangle([nested_x, nested_y, nested_x + nested_w, nested_y + nested_h], fill=WHITE, outline=GRAY)
+        draw_mini_clawd(draw, nested_x + 6, nested_y + 6, grid=3, blink=(f == 5))
+        draw.rectangle([nested_x + 20, nested_y + 10, nested_x + nested_w - 8, nested_y + 13], fill=CLAWD_ACCENT_BLUE)
+        if f >= 4:
+            draw.rectangle([nested_x + 20, nested_y + 18, nested_x + nested_w - 14, nested_y + 21], fill=BLACK)
+
+    for i, (sx, sy) in enumerate([(176, 146), (188, 128), (198, 112)]):
+        pulse = (f + i) % 3
+        size = 2 + pulse
+        draw.rectangle([sx - size, sy - size, sx + size, sy + size], fill=YELLOW if i != 1 else WHITE)
+
+
+def sc_composing(draw, f, img):
+    """Clawd writes a growing musical score on a stand, distinct from stage choreography."""
+    clawd_x, clawd_y = 30, 166
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["headphones"])
+
+    stand_x, stand_y = 226, 112
+    sheet_w, sheet_h = 110, 92
+    draw.rectangle([stand_x, stand_y, stand_x + sheet_w, stand_y + sheet_h], fill=WHITE, outline=DARK_GRAY)
+    draw.polygon([
+        (stand_x + 10, stand_y + sheet_h),
+        (stand_x + sheet_w - 10, stand_y + sheet_h),
+        (stand_x + sheet_w - 18, stand_y + sheet_h + 16),
+        (stand_x + 18, stand_y + sheet_h + 16),
+    ], fill=(214, 214, 214), outline=DARK_GRAY)
+    draw.line([stand_x + sheet_w // 2, stand_y + sheet_h + 16, stand_x + sheet_w // 2, 286], fill=DARK_GRAY, width=3)
+    draw.line([stand_x + sheet_w // 2, 286, stand_x + sheet_w // 2 - 20, 308], fill=DARK_GRAY, width=2)
+    draw.line([stand_x + sheet_w // 2, 286, stand_x + sheet_w // 2 + 20, 308], fill=DARK_GRAY, width=2)
+
+    for i in range(5):
+        ly = stand_y + 14 + i * 12
+        draw.line([stand_x + 10, ly, stand_x + sheet_w - 10, ly], fill=GRAY, width=1)
+    for i in range(3):
+        mx = stand_x + 34 + i * 24
+        draw.line([mx, stand_y + 8, mx, stand_y + sheet_h - 10], fill=(228, 228, 228), width=1)
+
+    note_positions = [
+        (stand_x + 24, stand_y + 54),
+        (stand_x + 48, stand_y + 42),
+        (stand_x + 72, stand_y + 60),
+        (stand_x + 90, stand_y + 34),
+    ]
+    for i in range(min(f + 1, len(note_positions))):
+        nx, ny = note_positions[i]
+        draw_music_note(draw, nx, ny, color=[BLUE, PURPLE, TEAL, RED][i])
+    if f >= 3:
+        draw.line([stand_x + 18, stand_y + 26, stand_x + 28, stand_y + 26], fill=BLACK, width=2)
+        draw.line([stand_x + 18, stand_y + 78, stand_x + 34, stand_y + 78], fill=BLACK, width=2)
+
+    pen_tip_x = stand_x - 8 + f * 3
+    pen_tip_y = stand_y + 42 + [2, -8, -16, -10, 0, -4][f]
+    draw.line([clawd_x + 10 * g, clawd_y + 2 * g + g // 2, pen_tip_x - 12, pen_tip_y + 6], fill=GRAY, width=2)
+    draw.polygon([
+        (pen_tip_x - 14, pen_tip_y + 8),
+        (pen_tip_x + 2, pen_tip_y),
+        (pen_tip_x + 10, pen_tip_y + 6),
+        (pen_tip_x - 6, pen_tip_y + 14),
+    ], fill=(152, 116, 86), outline=DARK_BROWN)
+    draw.polygon([
+        (pen_tip_x + 2, pen_tip_y),
+        (pen_tip_x + 14, pen_tip_y + 4),
+        (pen_tip_x + 6, pen_tip_y + 10),
+    ], fill=YELLOW, outline=ORANGE)
+    if f >= 2:
+        for sx, sy in [(118, 110), (152, 86), (178, 134)]:
+            draw_music_note(draw, sx, sy + ((f + sx // 10) % 3) * 4, color=LIGHT_BLUE if sx != 152 else YELLOW)
+
+
+def sc_dilly_dallying(draw, f, img):
+    """Clawd shuffles forward in tiny indecisive steps with a meandering trail behind."""
+    xs = [42, 50, 48, 58, 56, 68]
+    ys = [178, 170, 178, 170, 178, 170]
+    cx = xs[f]
+    cy = ys[f]
+    draw_clawd(draw, cx, cy, g, blink=(f == 2))
+
+    trail_points = [(30, 292), (56, 284), (84, 292), (112, 284), (138, 292), (164, 286)]
+    for i in range(len(trail_points) - 1):
+        x1, y1 = trail_points[i]
+        x2, y2 = trail_points[i + 1]
+        color = LIGHT_BLUE if i < len(trail_points) - 2 else TEAL
+        draw.line([x1, y1, x2, y2], fill=color, width=2)
+        mx = (x1 + x2) // 2
+        my = (y1 + y2) // 2
+        draw.ellipse([mx - 2, my - 2, mx + 2, my + 2], fill=color)
+    arrow_x, arrow_y = trail_points[-1]
+    draw.polygon([(arrow_x, arrow_y - 6), (arrow_x + 14, arrow_y), (arrow_x, arrow_y + 6)], fill=TEAL)
+
+    for i in range(f + 1):
+        fx = 22 + i * 20
+        lift = -4 if i % 2 == 0 else 1
+        draw.ellipse([fx, 306 + lift, fx + 10, 312 + lift], fill=DARK_BROWN)
+        draw.ellipse([fx + 12, 304 - lift // 2, fx + 22, 310 - lift // 2], fill=DARK_BROWN)
+    for sx, sy in [(220, 124), (246, 140), (270, 120)]:
+        if f in {1, 3, 5}:
+            draw.ellipse([sx - 4, sy - 4, sx + 4, sy + 4], fill=(238, 238, 238))
+            draw.ellipse([sx + 8, sy - 2, sx + 14, sy + 4], fill=(230, 230, 230))
+
+
+def sc_burrowing(draw, f, img):
+    """Clawd pops through a deeper burrow while the tunnel and dirt rim read more clearly."""
+    soil = (132, 96, 64)
+    soil_mid = (150, 112, 78)
+    soil_light = (170, 132, 94)
+    soil_dark = (84, 58, 40)
+    soil_deep = (54, 36, 24)
+    shift = [0, 4, 12, 16, 10, 4][f]
+
+    draw.rectangle([0, 236, CANVAS, 320], fill=soil)
+    for i in range(6):
+        mx = -6 + i * 72
+        my = 222 + (i % 2) * 6
+        fill = soil_light if i % 2 == 0 else soil_mid
+        draw.ellipse([mx, my, mx + 108, my + 34], fill=fill)
+
+    hole_box = [74 + shift, 186, 194 + shift, 268]
+    inner_box = [96 + shift, 204, 172 + shift, 258]
+    front_rim = [52 + shift, 236, 186 + shift, 286]
+    draw.ellipse(hole_box, fill=soil_dark)
+    draw.ellipse(inner_box, fill=soil_deep)
+
+    clawd_x = 60 + shift
+    clawd_y = 146 + [2, 0, -6, -10, -6, -2][f]
+    draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3))
+
+    draw.ellipse(front_rim, fill=soil_mid, outline=soil_dark)
+    draw.arc([front_rim[0] + 6, front_rim[1] - 4, front_rim[2] - 6, front_rim[3] - 8], 180, 340, fill=soil_light, width=2)
+    draw.arc([214 + shift, 170, 350 + shift, 292], 180, 360, fill=soil_dark, width=4)
+    draw.arc([232 + shift, 186, 332 + shift, 274], 180, 360, fill=soil_deep, width=3)
+    draw.line([284 + shift, 236, 284 + shift, 288], fill=soil_dark, width=3)
+    draw.arc([252 + shift, 204, 314 + shift, 254], 202, 344, fill=soil_mid, width=2)
+
+    shovel_x = 214
+    shovel_y = 158
+    draw.line([shovel_x, shovel_y, shovel_x + 40, shovel_y + 92], fill=BROWN, width=3)
+    draw.polygon([
+        (shovel_x + 30, shovel_y + 86),
+        (shovel_x + 60, shovel_y + 84),
+        (shovel_x + 66, shovel_y + 114),
+        (shovel_x + 24, shovel_y + 114),
+    ], fill=GRAY, outline=DARK_GRAY)
+
+    dirt_bursts = [
+        [(176, 176, 9), (216, 162, 7), (256, 186, 8), (292, 198, 6)],
+        [(168, 164, 8), (224, 148, 6), (268, 174, 9), (298, 188, 6)],
+        [(156, 152, 8), (234, 140, 7), (278, 164, 8), (306, 182, 7)],
+        [(170, 160, 9), (246, 148, 7), (290, 176, 8), (314, 194, 6)],
+        [(184, 172, 8), (238, 162, 7), (286, 188, 8), (304, 204, 6)],
+        [(196, 184, 7), (226, 174, 6), (272, 200, 8), (294, 214, 6)],
+    ]
+    for i, (dx, dy, size) in enumerate(dirt_bursts[f]):
+        fill = soil_dark if i % 2 else soil
+        draw.ellipse([dx, dy, dx + size, dy + size], fill=fill)
+        draw.ellipse([dx + 2, dy + 1, dx + size // 2 + 2, dy + size // 2 + 1], fill=soil_light)
+    for sx, sy in [(54 + shift, 216), (70 + shift, 208), (194 + shift, 210)]:
+        draw.line([sx, sy, sx + 10, sy - 10], fill=soil_light, width=1)
+
+
+def sc_flambeing(draw, f, img):
+    """A richer skillet flambé with layered blue heat and orange tongues of fire."""
+    clawd_x, clawd_y = 30, 160
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+
+    pan_x, pan_y = 210, 236
+    draw.arc([pan_x, pan_y, pan_x + 126, pan_y + 64], 0, 180, fill=DARK_GRAY, width=4)
+    draw.rectangle([pan_x + 8, pan_y + 26, pan_x + 118, pan_y + 34], fill=DARK_GRAY)
+    draw.arc([pan_x + 8, pan_y + 18, pan_x + 118, pan_y + 40], 190, 350, fill=GRAY, width=2)
+    draw.rectangle([pan_x - 34, pan_y + 22, pan_x + 4, pan_y + 30], fill=BROWN)
+    draw.rectangle([pan_x - 36, pan_y + 19, pan_x - 22, pan_y + 33], fill=CORAL)
+
+    flame_heights = [92, 124, 166, 184, 148, 110]
+    plume_w = [60, 70, 82, 88, 72, 62][f]
+    base_x = pan_x + 58
+    base_y = pan_y + 14
+    blue = (70, 154, 255)
+    pale_blue = (176, 222, 255)
+    orange = (255, 132, 44)
+    yellow = (255, 224, 96)
+    sway = [-10, -4, 6, 12, 6, -2][f]
+
+    draw.polygon([
+        (base_x - plume_w // 2, base_y + 18),
+        (base_x - plume_w // 2 - 10, base_y - flame_heights[f] // 4),
+        (base_x - 20 + sway // 2, base_y - flame_heights[f] // 2),
+        (base_x - 6 + sway, base_y - flame_heights[f]),
+        (base_x + 12 + sway, base_y - flame_heights[f] * 4 // 5),
+        (base_x + 26 + sway // 2, base_y - flame_heights[f] // 2),
+        (base_x + plume_w // 2 + 10, base_y - flame_heights[f] // 5),
+        (base_x + plume_w // 2, base_y + 18),
+    ], fill=blue)
+    draw.polygon([
+        (base_x - plume_w // 3, base_y + 10),
+        (base_x - 16, base_y - flame_heights[f] // 3),
+        (base_x - 2 + sway // 2, base_y - flame_heights[f] + 18),
+        (base_x + 18 + sway, base_y - flame_heights[f] // 3),
+        (base_x + plume_w // 3, base_y + 10),
+    ], fill=orange)
+    draw.polygon([
+        (base_x - 16, base_y + 4),
+        (base_x - 4, base_y - flame_heights[f] // 2 + 16),
+        (base_x, base_y - flame_heights[f] + 34),
+        (base_x + 4, base_y - flame_heights[f] // 2 + 16),
+        (base_x + 16, base_y + 4),
+    ], fill=yellow)
+    for side in (-1, 1):
+        tongue_x = base_x + side * (plume_w // 3)
+        tongue_y = base_y - flame_heights[f] // 3
+        draw.arc([tongue_x - 18, tongue_y - 24, tongue_x + 18, tongue_y + 24], 210 if side < 0 else -30, 30 if side < 0 else 210, fill=orange, width=3)
+        draw.arc([tongue_x - 10, tongue_y - 16, tongue_x + 10, tongue_y + 16], 210 if side < 0 else -30, 30 if side < 0 else 210, fill=yellow, width=2)
+    draw.ellipse([base_x - 36, base_y + 2, base_x + 40, base_y + 26], outline=orange, width=2)
+
+    for i in range(5):
+        sx = pan_x + 20 + i * 18
+        sy = pan_y - 12 - ((f * 8 + i * 10) % 44)
+        draw.rectangle([sx, sy, sx + 4, sy + 4], fill=yellow if i % 2 == 0 else pale_blue)
+        draw.ellipse([sx + 6, sy + 3, sx + 10, sy + 7], fill=orange if i % 2 == 0 else yellow)
+
+    bottle_x = 166
+    bottle_y = 176
+    pour = [0, 1, 1, 1, 0, 0][f]
+    draw.rectangle([bottle_x, bottle_y, bottle_x + 18, bottle_y + 34], fill=GREEN)
+    draw.rectangle([bottle_x + 4, bottle_y - 8, bottle_x + 14, bottle_y], fill=DARK_GRAY)
+    if pour:
+        draw.line([bottle_x + 18, bottle_y + 10, pan_x + 40, pan_y - 2], fill=YELLOW, width=2)
+    for sx, sy in [(base_x - 20, base_y - 28), (base_x + 34, base_y - 40), (base_x + 10, base_y - 64)]:
+        draw_text(draw, "*", sx + (f % 2) * 3, sy - (f % 3) * 2, color=YELLOW, scale=2)
+
+
+def sc_flummoxing(draw, f, img):
+    """Clawd stares at a denser problem knot while punctuation orbits in confusion."""
+    clawd_x, clawd_y = 42, 166
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2))
+    draw_sweat_drop(draw, clawd_x + 116, clawd_y - 10 + (f % 2) * 4, scale=2)
+
+    knot_cx = 282
+    knot_cy = 170
+    wobble = [-8, 0, 10, 4, -4, 2][f]
+    bubble_fill = (244, 242, 248)
+    draw.ellipse([214, 108, 350, 230], fill=bubble_fill, outline=GRAY)
+    draw.ellipse([230, 94, 330, 178], fill=bubble_fill, outline=GRAY)
+    draw.ellipse([238, 182, 340, 248], fill=bubble_fill, outline=GRAY)
+
+    loops = [
+        (knot_cx - 56 + wobble, knot_cy - 32, knot_cx + 8 + wobble, knot_cy + 12),
+        (knot_cx - 20 + wobble, knot_cy - 48, knot_cx + 54 + wobble, knot_cy + 2),
+        (knot_cx - 46 + wobble, knot_cy - 4, knot_cx + 26 + wobble, knot_cy + 48),
+        (knot_cx + 2 + wobble, knot_cy - 10, knot_cx + 74 + wobble, knot_cy + 44),
+        (knot_cx - 12 + wobble, knot_cy + 6, knot_cx + 46 + wobble, knot_cy + 58),
+    ]
+    for i, box in enumerate(loops):
+        color = PURPLE if i % 2 == 0 else RED
+        draw.arc(box, 18 + i * 18, 330 - i * 16, fill=color, width=3)
+    draw.line([250 + wobble, 184, 322 + wobble, 156], fill=PURPLE, width=2)
+    draw.line([260 + wobble, 146, 322 + wobble, 204], fill=RED, width=2)
+
+    orbiters = [
+        ("?", 230 + wobble, 110, YELLOW, 4),
+        ("!", 306 + wobble, 112, ORANGE, 4),
+        ("?", 334 + wobble, 152, LIGHT_BLUE, 3),
+        ("!", 246 + wobble, 206, RED, 3),
+    ]
+    for glyph, sx, sy, color, scale in orbiters:
+        draw_text(draw, glyph, sx, sy + (f % 2) * 2, color=color, scale=scale)
+    for sx, sy in [(214, 214), (322, 232), (356, 198)]:
+        draw_text(draw, "*", sx + wobble // 3, sy, color=WHITE, scale=2)
+
+    hand_x = clawd_x + 10 * g
+    hand_y = clawd_y + 2 * g + g // 2
+    draw.line([hand_x, hand_y, 214, 184], fill=GRAY, width=2)
+
+
+def sc_fluttering(draw, f, img):
+    """Larger butterflies and petals flutter on visibly softer looping currents."""
+    def draw_butterfly(cx, cy, wing, color):
+        draw.ellipse([cx - wing - 4, cy - wing, cx - 2, cy + wing - 2], fill=color, outline=BLACK)
+        draw.ellipse([cx + 2, cy - wing, cx + wing + 4, cy + wing - 2], fill=color, outline=BLACK)
+        draw.ellipse([cx - wing, cy, cx - 2, cy + wing + 4], fill=tint_color(color, 0.2), outline=BLACK)
+        draw.ellipse([cx + 2, cy, cx + wing, cy + wing + 4], fill=tint_color(color, 0.2), outline=BLACK)
+        draw.rectangle([cx - 2, cy - wing + 2, cx + 2, cy + wing + 4], fill=DARK_GRAY)
+        draw.line([cx - 2, cy - wing + 2, cx - 8, cy - wing - 6], fill=GRAY, width=1)
+        draw.line([cx + 2, cy - wing + 2, cx + 8, cy - wing - 6], fill=GRAY, width=1)
+
+    def draw_petal(cx, cy, color, tilt):
+        draw.polygon([
+            (cx, cy - 10),
+            (cx + 8 + tilt, cy - 2),
+            (cx + 2, cy + 10),
+            (cx - 8 + tilt, cy + 2),
+        ], fill=color, outline=BLACK)
+
+    clawd_x = 118 + [0, 2, 0, -2, 0, 2][f]
+    clawd_y = 170 + [0, -3, 0, 3, 0, -2][f]
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+
+    butterflies = [
+        (86, 92, 12, PINK),
+        (284, 84, 13, LIGHT_BLUE),
+        (318, 152, 11, YELLOW),
+    ]
+    butterfly_paths = [
+        [(-8, 0), (-2, -12), (12, -18), (20, -6), (8, 8), (-6, 4)],
+        [(0, -8), (14, -18), (24, -6), (12, 10), (-4, 14), (-12, 2)],
+        [(12, -6), (18, 6), (8, 18), (-8, 10), (-12, -6), (4, -14)],
+    ]
+    for (bx, by, wing, color), path in zip(butterflies, butterfly_paths):
+        ox, oy = path[f]
+        cx = bx + ox
+        cy = by + oy
+        draw_butterfly(cx, cy, wing, color)
+        draw.arc([cx - 26, cy - 20, cx + 26, cy + 20], 220, 330, fill=GRAY, width=1)
+
+    petals = [
+        (92, 204, LIGHT_CORAL, [(-6, 8), (4, 16), (12, 6), (6, -8), (-6, -12), (-12, -2)]),
+        (296, 224, WHITE, [(6, 0), (14, -12), (8, -20), (-6, -8), (-10, 8), (4, 14)]),
+    ]
+    for bx, by, color, path in petals:
+        ox, oy = path[f]
+        draw_petal(bx + ox, by + oy, color, tilt=(-2 if f % 2 else 2))
+
+
+def sc_infusing(draw, f, img):
+    """A glass vessel slowly darkens as the infusion swirls through it."""
+    clawd_x, clawd_y = 34, 168
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+
+    cup_x, cup_y = 224, 132
+    cup_w, cup_h = 98, 130
+    liquid_colors = [
+        (220, 238, 255),
+        (204, 230, 250),
+        (190, 216, 240),
+        (196, 202, 232),
+        (212, 184, 222),
+        (228, 170, 200),
+    ]
+    liquid_color = liquid_colors[f]
+    liquid_top = 212
+
+    draw.rectangle([cup_x + 10, cup_y + 10, cup_x + cup_w - 10, cup_y + cup_h - 14], outline=(210, 230, 255), width=2)
+    draw.rounded_rectangle([cup_x, cup_y + 8, cup_x + cup_w, cup_y + cup_h], radius=16, outline=WHITE, width=3)
+    draw.ellipse([cup_x + 4, cup_y, cup_x + cup_w - 4, cup_y + 18], outline=WHITE, width=2)
+    draw.line([cup_x + 16, cup_y + 22, cup_x + 16, cup_y + cup_h - 22], fill=(230, 245, 255), width=2)
+
+    draw.rectangle([cup_x + 10, liquid_top, cup_x + cup_w - 10, cup_y + cup_h - 12], fill=liquid_color)
+    draw.ellipse([cup_x + 10, liquid_top - 8, cup_x + cup_w - 10, liquid_top + 10], fill=tint_color(liquid_color, 0.12))
+    draw.arc([cup_x + cup_w - 8, cup_y + 30, cup_x + cup_w + 26, cup_y + 76], 270, 90, fill=WHITE, width=3)
+    draw.arc([cup_x + cup_w - 2, cup_y + 36, cup_x + cup_w + 20, cup_y + 70], 270, 90, fill=(220, 240, 255), width=2)
+
+    bag_y = 152 + [0, 10, 22, 30, 22, 12][f]
+    tag_x = clawd_x + 10 * g
+    tag_y = clawd_y + 2 * g + g // 2
+    draw.line([tag_x, tag_y, cup_x + 22, cup_y + 10], fill=GRAY, width=2)
+    draw.line([cup_x + 22, cup_y + 10, cup_x + 22, bag_y], fill=WHITE, width=2)
+    draw.rectangle([cup_x + 10, bag_y, cup_x + 38, bag_y + 30], fill=LIGHT_CORAL, outline=RED)
+    draw.rectangle([cup_x + 15, bag_y + 6, cup_x + 33, bag_y + 24], fill=tint_color(LIGHT_CORAL, 0.35), outline=RED)
+
+    swirl_colors = [WHITE, LIGHT_BLUE, PURPLE]
+    for i, color in enumerate(swirl_colors):
+        sy = 220 - i * 22
+        sway = (f * 9 + i * 14) % 32
+        draw.arc([cup_x + 18 + sway // 3, sy - 18, cup_x + 56 + sway, sy + 12], 200, 20, fill=color, width=2)
+        draw.arc([cup_x + 46 - sway // 4, sy - 8, cup_x + 78 - sway // 4, sy + 18], 180, 10, fill=color, width=2)
+    for px, py in [(cup_x + 44, 192), (cup_x + 66, 226), (cup_x + 58, 248)]:
+        draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=WHITE)
+    draw_steam(draw, cup_x + 36, cup_y - 28, f, color=(225, 225, 225))
+
+
+def sc_inferring(draw, f, img):
+    """Clawd inspects clue cards as dotted connections converge on one inferred answer."""
+    def draw_dotted_link(x1, y1, x2, y2, dots, color):
+        for i in range(dots):
+            t = i / max(1, dots - 1)
+            px = int(x1 + (x2 - x1) * t)
+            py = int(y1 + (y2 - y1) * t)
+            draw.ellipse([px - 2, py - 2, px + 2, py + 2], fill=color)
+
+    clawd_x, clawd_y = 32, 164
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["magnifier"])
+
+    board_x, board_y = 220, 110
+    board_w, board_h = 126, 124
+    draw.rectangle([board_x, board_y, board_x + board_w, board_y + board_h], fill=(244, 236, 214), outline=DARK_BROWN)
+    draw.rectangle([board_x + 6, board_y + 6, board_x + board_w - 6, board_y + board_h - 6], outline=(200, 178, 138))
+
+    cards = [
+        (236, 126, RED, -3, "?"),
+        (292, 132, BLUE, 2, "!"),
+        (248, 188, YELLOW, -1, "#"),
+        (304, 192, GREEN, 1, "*"),
+    ]
+    for cx, cy, accent, skew, glyph in cards:
+        draw_data_card(draw, cx, cy, accent=accent, skew=skew)
+        draw_text(draw, glyph, cx + 10, cy + 10, color=accent, scale=3)
+        draw.ellipse([cx + 14, cy - 8, cx + 20, cy - 2], fill=RED)
+
+    hub_x = 292
+    hub_y = 186
+    dots = 3 + f * 2
+    for cx, cy, accent, skew, glyph in cards[:3]:
+        draw_dotted_link(cx + 20, cy + 24, hub_x, hub_y, dots, accent)
+
+    clue_card_x = 286
+    clue_card_y = 178
+    draw_data_card(draw, clue_card_x, clue_card_y, accent=LIGHT_BLUE, skew=-2)
+    draw.rectangle([clue_card_x + 10, clue_card_y + 18, clue_card_x + 26, clue_card_y + 21], fill=BLACK)
+    draw.rectangle([clue_card_x + 10, clue_card_y + 26, clue_card_x + 24, clue_card_y + 29], fill=BLACK)
+    draw.rectangle([clue_card_x + 10, clue_card_y + 34, clue_card_x + 28, clue_card_y + 37], fill=BLACK)
+    glow_r = [8, 12, 16, 22, 28, 22][f]
+    draw.ellipse([hub_x - glow_r, hub_y - glow_r, hub_x + glow_r, hub_y + glow_r], outline=YELLOW, width=2)
+    if f >= 3:
+        for sx, sy in [(274, 158), (326, 166), (318, 214), (266, 214)]:
+            draw_text(draw, "*", sx, sy, color=YELLOW, scale=2)
+
+
+def sc_julienning(draw, f, img):
+    """Clawd finely slices vegetables into precise matchsticks under a taller toque."""
+    clawd_x, clawd_y = 28, 162
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})])
+
+    board_x, board_y = 202, 224
+    draw.polygon([
+        (board_x + 6, board_y),
+        (board_x + 146, board_y),
+        (board_x + 152, board_y + 34),
+        (board_x, board_y + 34),
+    ], fill=(216, 174, 118), outline=DARK_BROWN)
+    draw.rectangle([board_x + 126, board_y + 10, board_x + 138, board_y + 22], outline=DARK_BROWN, width=2)
+
+    carrot_len = [82, 72, 60, 48, 36, 26][f]
+    carrot_top = board_y + 12
+    draw.polygon([
+        (board_x + 20, carrot_top + 2),
+        (board_x + 20 + carrot_len, carrot_top),
+        (board_x + 20 + carrot_len + 14, carrot_top + 9),
+        (board_x + 20 + carrot_len, carrot_top + 20),
+        (board_x + 20, carrot_top + 22),
+    ], fill=ORANGE, outline=RED)
+    draw.rectangle([board_x + 10, carrot_top + 4, board_x + 20, carrot_top + 18], fill=GREEN)
+
+    strip_count = 5 + f
+    for i in range(strip_count):
+        sx = board_x + 92 + (i % 5) * 9
+        sy = board_y + 5 + (i // 5) * 6
+        length = 24 + (i % 3) * 3
+        draw.rectangle([sx, sy, sx + length, sy + 3], fill=ORANGE if i % 2 == 0 else YELLOW)
+
+    chop_lift = [4, -10, -20, -6, 6, -2][f]
+    knife_tip_x = board_x + 68 + f * 7
+    knife_tip_y = board_y + 12 + chop_lift
+    draw.polygon([
+        (knife_tip_x - 30, knife_tip_y + 8),
+        (knife_tip_x + 2, knife_tip_y),
+        (knife_tip_x + 20, knife_tip_y + 8),
+        (knife_tip_x - 8, knife_tip_y + 16),
+    ], fill=GRAY, outline=DARK_GRAY)
+    draw.rectangle([knife_tip_x - 44, knife_tip_y + 5, knife_tip_x - 30, knife_tip_y + 13], fill=BROWN)
+    draw.line([clawd_x + 10 * g, clawd_y + 2 * g + g // 2, knife_tip_x - 42, knife_tip_y + 9], fill=GRAY, width=2)
+    for i in range(3):
+        draw.line([knife_tip_x - 6 - i * 12, knife_tip_y - 8 - i * 6,
+                   knife_tip_x + 6 - i * 8, knife_tip_y - 16 - i * 6], fill=WHITE, width=1)
+
+
+def sc_sprouting(draw, f, img):
+    """Fresh green shoots emerge with clearer seed, crack, and leaf progression."""
+    draw_clawd(draw, 36, 170, g, blink=(f == 4))
+    leaf_green = (150, 210, 110)
+    seed_color = (110, 74, 42)
+    soil_highlight = (184, 146, 108)
+    soil_crack = DARK_BROWN
+
+    soil_x, soil_y = 204, 232
+    draw.rectangle([soil_x, soil_y, 354, 274], fill=(132, 94, 62))
+    for i in range(4):
+        draw.ellipse([soil_x + 8 + i * 34, soil_y - 10 + (i % 2) * 4, soil_x + 54 + i * 34, soil_y + 12 + (i % 2) * 4],
+                     fill=(156, 114, 78))
+
+    heights = [
+        [0, 0, 0],
+        [10, 4, 0],
+        [24, 18, 10],
+        [42, 34, 24],
+        [66, 54, 42],
+        [84, 72, 58],
+    ][f]
+    xs = [238, 280, 320]
+    for i, (sx, h) in enumerate(zip(xs, heights)):
+        if h <= 0:
+            draw.ellipse([sx - 9, soil_y - 7, sx + 9, soil_y + 5], fill=seed_color)
+            draw.arc([sx - 9, soil_y - 7, sx + 9, soil_y + 5], 210, 330, fill=soil_highlight, width=1)
+            continue
+        top = soil_y - h
+        draw.line([sx, soil_y, sx, top], fill=GREEN, width=3)
+        draw.line([sx - 8, soil_y - 2, sx - 2, soil_y - 10], fill=soil_crack, width=1)
+        draw.line([sx + 8, soil_y - 2, sx + 2, soil_y - 10], fill=soil_crack, width=1)
+        if h > 12:
+            draw.polygon([(sx, top + 12), (sx - 18, top + 2), (sx - 5, top + 24)], fill=leaf_green, outline=GREEN)
+        if h > 26:
+            draw.polygon([(sx, top + 18), (sx + 18, top + 8), (sx + 5, top + 30)], fill=GREEN, outline=DARK_BROWN)
+        if h > 54:
+            draw.ellipse([sx - 5, top - 6, sx + 5, top + 4], fill=LIGHT_CORAL if i == 1 else YELLOW)
+        else:
+            draw.ellipse([sx - 4, top - 4, sx + 4, top + 4], fill=seed_color if i == 2 else YELLOW)
+
+    if f >= 3:
+        draw.polygon([(84, 154), (98, 142), (110, 154)], fill=GREEN)
+        draw.line([96, 154, 96, 170], fill=GREEN, width=2)
+    for sx, sy in [(258, 152), (308, 170)]:
+        if f >= 4:
+            draw_text(draw, "*", sx, sy, color=YELLOW, scale=2)
+
+
+def sc_swooping(draw, f, img):
+    """Clawd sweeps along a stronger curved flight path with clearer trailing motion."""
+    xs = [46, 84, 144, 220, 294, 330]
+    ys = [168, 128, 92, 100, 144, 188]
+    cx = xs[f]
+    cy = ys[f]
+    path_arcs = [
+        (34, 212, 140, 302),
+        (98, 142, 236, 254),
+        (186, 94, 316, 204),
+    ]
+
+    for i, (x1, y1, x2, y2) in enumerate(path_arcs):
+        draw.arc([x1, y1, x2, y2], 198, 336, fill=LIGHT_BLUE if i < 2 else WHITE, width=2)
+    for i in range(max(0, f - 2), f):
+        tx = xs[i]
+        ty = ys[i]
+        tint = tint_color(CORAL, 0.34 + (f - i) * 0.08)
+        draw.rectangle([tx + 20, ty + 24, tx + 74, ty + 30], fill=tint)
+    draw_clawd(draw, cx, cy, g, blink=(f == 2))
+    for i in range(4):
+        line_y = cy + 18 + i * 10
+        draw.line([cx - 42 - i * 16, line_y, cx - 8 - i * 10, line_y], fill=LIGHT_BLUE, width=2)
+
+    for i in range(4):
+        px = 68 + i * 72
+        py = 252 - abs(2 - i) * 12
+        draw.arc([px, py, px + 30, py + 14], 180, 360, fill=WHITE, width=2)
+    for sx, sy in [(278, 82), (334, 116), (302, 176)]:
+        draw_text(draw, "*", sx, sy + (f % 2) * 4, color=YELLOW, scale=2)
+
+
+def sc_waddling(draw, f, img):
+    """Clawd waddles with a bigger side sway and clearer alternating footprints."""
+    xs = [40, 56, 70, 88, 104, 120]
+    ys = [178, 168, 178, 168, 178, 168]
+    cx = xs[f]
+    cy = ys[f]
+    draw_clawd(draw, cx, cy, g, blink=(f == 3))
+
+    sway_arc = [(-18, 18), (14, -14), (-20, 16), (12, -12), (-16, 14), (18, -16)][f]
+    draw.arc([cx - 34, cy - 34, cx + 84, cy + 50], 210, 324, fill=LIGHT_BLUE, width=2)
+    draw.arc([cx - 22, cy - 24, cx + 72, cy + 42], 26, 148, fill=LIGHT_BLUE, width=2)
+    draw.line([cx + 32, cy - 20, cx + 32 + sway_arc[0], cy - 30], fill=YELLOW, width=2)
+    draw.line([cx + 32, cy - 20, cx + 32 + sway_arc[1], cy - 30], fill=YELLOW, width=2)
+    draw.line([cx + 18, cy + 96, cx + 54, cy + 96], fill=(214, 214, 214), width=2)
+
+    for i in range(f + 1):
+        fx = 26 + i * 22
+        rise = -4 if i % 2 == 0 else 2
+        draw.ellipse([fx, 308 + rise, fx + 10, 314 + rise], fill=DARK_BROWN)
+        draw.ellipse([fx + 14, 306 - rise // 2, fx + 24, 312 - rise // 2], fill=DARK_BROWN)
+        if i >= 1:
+            draw.arc([fx - 6, 292, fx + 24, 310], 200, 330, fill=GRAY, width=1)
+
+
+def sc_warping(draw, f, img):
+    """A code-grid tunnel bends and pulls data tiles through a warp corridor."""
+    cx = 44 + [0, 8, 18, 28, 34, 22][f]
+    cy = 168 + [0, -2, -6, -4, 0, 2][f]
+    draw_clawd(draw, cx, cy, g, blink=(f == 3))
+
+    vx, vy = 292, 180
+    pull = [0.12, 0.24, 0.38, 0.52, 0.44, 0.28][f]
+    for i in range(5):
+        left = 178 + i * 16
+        right = 376 - i * 18
+        top = 94 + i * 18
+        bottom = 270 - i * 14
+        draw.arc([left, top, right, bottom], 110, 248, fill=LIGHT_BLUE if i < 3 else WHITE, width=2)
+        draw.arc([left, top, right, bottom], 292, 70, fill=TEAL if i < 3 else LIGHT_BLUE, width=2)
+
+    for i in range(6):
+        base_x = 188 + i * 26
+        bend = int((i - 2.5) * 24 * pull)
+        draw.line([base_x, 102, base_x + bend, 138, vx + bend // 2, vy + 4, base_x + bend, 222, base_x, 262],
+                  fill=GRAY if i % 2 else LIGHT_BLUE, width=1)
+    for i in range(6):
+        base_y = 108 + i * 24
+        bend = int((i - 2.5) * 18 * pull)
+        draw.line([186, base_y, 228, base_y + bend, vx, vy + bend, 344, base_y + bend, 376, base_y],
+                  fill=GRAY if i % 2 else WHITE, width=1)
+
+    cards = [
+        (190 + int(12 * pull), 118, TEAL, -3 - f),
+        (218 + int(26 * pull), 162, BLUE, -1 - f // 2),
+        (238 + int(38 * pull), 210, PURPLE, 2 + f // 2),
+    ]
+    for card_x, card_y, accent, skew in cards:
+        draw_data_card(draw, card_x, card_y, accent=accent, skew=skew)
+    for i in range(4):
+        line_y = cy + 18 + i * 10
+        draw.line([cx + 112 + i * 6, line_y, cx + 150 + i * 14, line_y], fill=LIGHT_BLUE, width=2)
+
+
+def sc_zesting(draw, f, img):
+    """Clawd zesting citrus over a bowl while bright curls fall from the grater."""
+    clawd_x, clawd_y = 26, 164
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["chef_hat"])
+
+    bowl_x, bowl_y = 258, 248
+    draw.arc([bowl_x, bowl_y, bowl_x + 90, bowl_y + 40], 0, 180, fill=LIGHT_BLUE, width=4)
+    draw.arc([bowl_x + 10, bowl_y + 10, bowl_x + 80, bowl_y + 34], 0, 180, fill=WHITE, width=2)
+
+    grate_x1 = 218
+    grate_y1 = 168 + [0, -2, -4, -2, 0, 2][f]
+    grate_x2 = 302
+    grate_y2 = 226
+    draw.line([grate_x1, grate_y1, grate_x2, grate_y2], fill=GRAY, width=6)
+    draw.line([grate_x1 - 10, grate_y1 - 4, grate_x1 + 10, grate_y1 + 10], fill=DARK_BROWN, width=5)
+    for i in range(5):
+        tx = grate_x1 + 18 + i * 12
+        ty = grate_y1 + 12 + i * 10
+        draw.line([tx, ty, tx + 10, ty + 8], fill=WHITE, width=1)
+        draw.line([tx + 4, ty - 6, tx + 14, ty + 2], fill=WHITE, width=1)
+
+    lemon_x = 286
+    lemon_y = 150 + [2, 0, -4, -6, -2, 2][f]
+    draw.ellipse([lemon_x - 24, lemon_y - 18, lemon_x + 24, lemon_y + 18], fill=YELLOW, outline=ORANGE)
+    draw.arc([lemon_x - 16, lemon_y - 10, lemon_x + 16, lemon_y + 10], 210, 330, fill=WHITE, width=2)
+    draw.ellipse([lemon_x + 18, lemon_y - 4, lemon_x + 32, lemon_y + 10], fill=ORANGE)
+
+    draw.line([clawd_x + 10 * g, clawd_y + 2 * g + g // 2, grate_x1 - 6, grate_y1 + 4], fill=GRAY, width=2)
+    curl_specs = [
+        (268, 198), (286, 210), (304, 220), (278, 228), (296, 238), (318, 246)
+    ]
+    drop = [0, 4, 10, 18, 26, 34][f]
+    for i, (zx, zy) in enumerate(curl_specs[:f + 2]):
+        yy = zy + drop - i * 4
+        draw.arc([zx - 8, yy - 6, zx + 8, yy + 6], 200, 30, fill=YELLOW if i % 2 == 0 else ORANGE, width=2)
+    for sx, sy in [(328, 150), (338, 170), (316, 186)]:
+        if f >= 2:
+            draw_text(draw, "*", sx, sy + (f % 2) * 3, color=YELLOW, scale=2)
 
 
 def sc_sauteing(draw, f, img):
@@ -5561,13 +6353,24 @@ def main():
     scene_generators = {
         "Billowing": sc_billowing,
         "Bloviating": sc_bloviating,
+        "Boondoggling": sc_boondoggling,
+        "Burrowing": sc_burrowing,
+        "Clauding": sc_clauding,
+        "Composing": sc_composing,
+        "Dilly-dallying": sc_dilly_dallying,
+        "Flambéing": sc_flambeing,
+        "Flummoxing": sc_flummoxing,
+        "Fluttering": sc_fluttering,
         "Gusting": sc_gusting,
         "Hustling": sc_hustling,
         "Ideating": sc_ideating,
         "Imagining": sc_imagining,
         "Incubating": sc_incubating,
+        "Inferring": sc_inferring,
+        "Infusing": sc_infusing,
         "Jitterbugging": sc_jitterbugging,
         "Jiving": sc_jiving,
+        "Julienning": sc_julienning,
         "Levitating": sc_levitating,
         "Manifesting": sc_manifesting,
         "Marinating": sc_marinating,
@@ -5605,18 +6408,24 @@ def main():
         "Smooshing": sc_smooshing,
         "Spelunking": sc_spelunking,
         "Spinning": sc_spinning,
+        "Sprouting": sc_sprouting,
         "Stewing": sc_stewing,
         "Sussing": sc_sussing,
         "Swirling": sc_swirling,
+        "Swooping": sc_swooping,
         "Symbioting": sc_symbioting,
         "Synthesizing": sc_synthesizing,
         "Twisting": sc_twisting,
+        "Undulating": sc_undulating,
         "Unravelling": sc_unravelling,
         "Vibing": sc_vibing,
+        "Waddling": sc_waddling,
         "Wandering": sc_wandering,
+        "Warping": sc_warping,
         "Whirring": sc_whirring,
         "Wibbling": sc_wibbling,
         "Wizarding": sc_wizarding,
+        "Zesting": sc_zesting,
         "Sautéing": sc_sauteing,
         "Scampering": sc_scampering,
         "Caramelizing": sc_caramelizing,
