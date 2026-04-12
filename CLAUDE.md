@@ -10,7 +10,7 @@ A creative playground for generating Clawd (Claude Code mascot) pixel art spinne
 
 - `generate_clawd_gifs.py` — Unified generator script: draws Clawd pixel art, defines both full `frames_*()` animations and compact `sc_*()` scenes, and outputs transparent GIFs
 - `generated/` — Runtime output directory for generated GIFs (kept out of git)
-- `spinner-words.md` — Official catalog of all `133` spinner words with status tracking, Chinese translations, and descriptions
+- `spinner-words.md` — Official catalog of all `148` spinner words with status tracking, Chinese translations, and descriptions
 - `README.md` — Public repo overview and usage guide
 - `AGENTS.md` — Pointer file for Codex and other coding agents, redirects to `CLAUDE.md`
 - `requirements.txt` — Minimal runtime dependency list (`Pillow`)
@@ -47,7 +47,7 @@ python3 generate_clawd_gifs.py
   - `Transmuting` — `8` frames
   - `Tinkering` — `8` frames
   - `Thundering` — `8` frames
-- The generator currently covers `133` official spinner words
+- The generator currently covers `148` official spinner words
 - `generate_clawd_gifs.py` supports two internal scene styles:
   - handcrafted `frames_*()` functions that return complete frame lists
   - compact `sc_*()` scene functions rendered through `make_frames()`
