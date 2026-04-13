@@ -5542,13 +5542,115 @@ def sc_jitterbugging(draw, f, img):
 # ---------------------------------------------------------------------------
 # GIF saving with transparency
 # ---------------------------------------------------------------------------
-def save_gif(frames, filename, duration=170):
-    """Save RGBA frames as animated GIF with transparency."""
-    key_rgb = (255, 0, 255)
+EXPORT_KEY_RGB = (255, 0, 255)
+EXPORT_TRANS_INDEX = 255
+EXPORT_FALLBACK_WORDS = {
+    "Billowing",
+    "Envisioning",
+    "Hatching",
+    "Imagining",
+    "Perusing",
+    "Ruminating",
+    "Thundering",
+}
+
+# This color set was sampled from the full current spinner corpus and then
+# collapsed through a fixed MEDIANCUT-derived palette. It keeps the fast path
+# deterministic while staying close to the current visual output.
+EXPORT_FIXED_VISIBLE_COLORS = (
+    (0, 0, 0), (12, 26, 45), (20, 65, 124), (30, 70, 110),
+    (30, 110, 45), (30, 120, 50), (30, 128, 45), (30, 146, 45),
+    (30, 164, 45), (32, 38, 60), (40, 100, 70), (40, 109, 70),
+    (40, 118, 70), (40, 127, 70), (40, 136, 70), (40, 145, 70),
+    (40, 154, 70), (40, 163, 70), (40, 172, 70), (48, 48, 60),
+    (50, 30, 15), (50, 50, 50), (54, 36, 24), (70, 154, 255),
+    (70, 205, 95), (80, 50, 25), (80, 80, 80), (80, 180, 100),
+    (80, 180, 180), (84, 58, 40), (100, 153, 205), (100, 160, 220),
+    (110, 74, 42), (110, 110, 110), (120, 70, 40), (125, 92, 58),
+    (130, 215, 220), (132, 94, 62), (132, 96, 64), (140, 140, 140),
+    (150, 30, 30), (150, 80, 30), (150, 112, 78), (150, 210, 110),
+    (150, 235, 160), (152, 116, 86), (156, 114, 78), (160, 100, 200),
+    (160, 200, 240), (160, 220, 80), (168, 55, 95), (170, 132, 94),
+    (170, 170, 170), (170, 255, 180), (176, 222, 255), (176, 230, 230),
+    (179, 211, 243), (180, 100, 65), (180, 120, 60), (180, 160, 220),
+    (180, 248, 255), (184, 146, 108), (188, 144, 102), (189, 189, 187),
+    (190, 150, 110), (190, 216, 240), (196, 202, 232), (198, 198, 198),
+    (198, 221, 242), (200, 150, 60), (200, 178, 138), (200, 180, 100),
+    (200, 180, 240), (200, 200, 200), (200, 200, 220), (200, 220, 200),
+    (203, 208, 235), (204, 230, 250), (205, 245, 248), (208, 208, 208),
+    (210, 218, 230), (210, 230, 255), (210, 233, 251), (211, 171, 99),
+    (212, 132, 90), (212, 184, 222), (214, 172, 118), (214, 184, 144),
+    (214, 188, 148), (214, 214, 214), (216, 174, 118), (216, 216, 216),
+    (217, 193, 226), (219, 188, 144), (220, 80, 80), (220, 238, 255),
+    (220, 240, 255), (220, 248, 255), (220, 255, 225), (222, 192, 138),
+    (224, 224, 224), (224, 240, 255), (225, 225, 225), (226, 145, 160),
+    (226, 204, 166), (228, 170, 200), (228, 228, 228), (230, 80, 30),
+    (230, 165, 130), (230, 184, 159), (230, 190, 60), (230, 230, 230),
+    (230, 245, 255), (231, 180, 207), (232, 194, 118), (233, 213, 177),
+    (234, 194, 172), (236, 236, 236), (236, 240, 246), (238, 226, 198),
+    (238, 238, 238), (239, 196, 174), (240, 160, 60), (240, 160, 180),
+    (240, 200, 80), (240, 220, 170), (240, 220, 178), (241, 220, 180),
+    (243, 179, 195), (243, 211, 115), (244, 229, 196), (244, 234, 216),
+    (244, 236, 214), (244, 242, 248), (245, 245, 245), (246, 246, 250),
+    (246, 248, 250), (247, 183, 190), (248, 221, 152), (250, 236, 208),
+    (250, 250, 250), (252, 244, 226), (255, 80, 20), (255, 100, 20),
+    (255, 120, 40), (255, 120, 120), (255, 130, 40), (255, 132, 44),
+    (255, 160, 60), (255, 175, 95), (255, 200, 100), (255, 200, 200),
+    (255, 210, 130), (255, 220, 120), (255, 220, 130), (255, 220, 180),
+    (255, 224, 96), (255, 226, 110), (255, 228, 120), (255, 228, 160),
+    (255, 228, 210), (255, 230, 210), (255, 233, 205), (255, 235, 160),
+    (255, 235, 175), (255, 236, 160), (255, 236, 248), (255, 238, 190),
+    (255, 240, 170), (255, 242, 248), (255, 244, 170), (255, 245, 165),
+    (255, 245, 180), (255, 246, 200), (255, 246, 212), (255, 255, 200),
+    (255, 255, 255),
+)
+EXPORT_FIXED_VISIBLE_COLOR_SET = set(EXPORT_FIXED_VISIBLE_COLORS)
+
+
+def _frame_to_export_rgb_and_alpha(frame):
+    bg = Image.new('RGBA', (CANVAS, CANVAS), EXPORT_KEY_RGB + (255,))
+    rgb = Image.alpha_composite(bg, frame).convert('RGB')
+    alpha = frame.getchannel('A')
+    return rgb, alpha
+
+
+def _build_fixed_export_palette():
+    source = Image.new('RGB', (len(EXPORT_FIXED_VISIBLE_COLORS), 1))
+    for i, rgb in enumerate(EXPORT_FIXED_VISIBLE_COLORS):
+        source.putpixel((i, 0), rgb)
+
+    master = source.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+    palette = master.getpalette()[:256 * 3]
+    palette[EXPORT_TRANS_INDEX * 3:EXPORT_TRANS_INDEX * 3 + 3] = list(EXPORT_KEY_RGB)
+
+    palette_image = Image.new('P', (1, 1))
+    palette_image.putpalette(palette)
+    return palette_image
+
+
+FIXED_EXPORT_PALETTE = _build_fixed_export_palette()
+
+
+def _word_from_output_filename(filename):
+    return os.path.splitext(os.path.basename(filename))[0].removeprefix("Clawd-")
+
+
+def _frames_fit_fixed_export_palette(frames):
+    for frame in frames:
+        colors = frame.convert('RGBA').getcolors(maxcolors=512)
+        if colors is None:
+            return False
+        for _, (r, g, b, a) in colors:
+            if a and (r, g, b) not in EXPORT_FIXED_VISIBLE_COLOR_SET:
+                return False
+    return True
+
+
+def _save_gif_shared_palette(frames, filename, duration=170):
     composite_frames = []
     for frame in frames:
-        bg = Image.new('RGBA', (CANVAS, CANVAS), key_rgb + (255,))
-        composite_frames.append(Image.alpha_composite(bg, frame).convert('RGB'))
+        rgb, _ = _frame_to_export_rgb_and_alpha(frame)
+        composite_frames.append(rgb)
 
     # Build one palette for the whole GIF so every frame shares the same
     # transparency index instead of quantizing independently.
@@ -5561,8 +5663,8 @@ def save_gif(frames, filename, duration=170):
     trans_index = 0
     min_dist = float('inf')
     for i in range(len(master_palette) // 3):
-        r, g, b = master_palette[i*3:i*3+3]
-        dist = (r - key_rgb[0])**2 + (g - key_rgb[1])**2 + (b - key_rgb[2])**2
+        r, g, b = master_palette[i * 3:i * 3 + 3]
+        dist = (r - EXPORT_KEY_RGB[0]) ** 2 + (g - EXPORT_KEY_RGB[1]) ** 2 + (b - EXPORT_KEY_RGB[2]) ** 2
         if dist < min_dist:
             min_dist = dist
             trans_index = i
@@ -5583,8 +5685,38 @@ def save_gif(frames, filename, duration=170):
         duration=duration,
         loop=0,
         disposal=2,
-        transparency=processed[0].info['transparency'],
+        transparency=trans_index,
     )
+
+
+def _save_gif_fixed_palette(frames, filename, duration=170):
+    processed = []
+    for frame in frames:
+        rgb, alpha = _frame_to_export_rgb_and_alpha(frame)
+        p_frame = rgb.quantize(palette=FIXED_EXPORT_PALETTE, dither=Image.Dither.NONE)
+        transparent_mask = alpha.point(lambda a: 255 if a == 0 else 0)
+        p_frame.paste(EXPORT_TRANS_INDEX, mask=transparent_mask)
+        p_frame.info['transparency'] = EXPORT_TRANS_INDEX
+        processed.append(p_frame)
+
+    processed[0].save(
+        filename,
+        save_all=True,
+        append_images=processed[1:],
+        duration=duration,
+        loop=0,
+        disposal=2,
+        transparency=EXPORT_TRANS_INDEX,
+    )
+
+
+def save_gif(frames, filename, duration=170):
+    """Save RGBA frames as animated GIF with transparency."""
+    word = _word_from_output_filename(filename)
+    if word in EXPORT_FALLBACK_WORDS or not _frames_fit_fixed_export_palette(frames):
+        _save_gif_shared_palette(frames, filename, duration=duration)
+    else:
+        _save_gif_fixed_palette(frames, filename, duration=duration)
     print(f"  Saved: {filename}")
 
 
