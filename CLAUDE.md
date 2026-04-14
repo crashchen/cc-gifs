@@ -83,6 +83,7 @@ python3 generate_clawd_gifs.py
 - `draw_clawd_face()` / `draw_clawd_accessories()` / `draw_clawd_icon_accessory()` — Clawd face variant and accessory compositing helpers
 - `draw_clawd_chef_hat()` / `draw_clawd_wizard_hat()` / `draw_clawd_helmet()` / `draw_clawd_headphones()` — costume headgear helpers for cooking, wizarding, spelunking, and music scenes
 - `draw_clawd_camera()` / `draw_clawd_magnifier()` / `draw_clawd_tool()` — hand-held prop helpers for various scenes
+- Frame-driven animation state is passed explicitly through `frame` arguments; the generator no longer relies on a shared global current-frame variable for auto-blinks or accessory timing, and longer custom scenes can keep blink cadence aligned to their own frame counts
 - `save_gif()` — uses a hybrid export path: a fixed full-corpus palette for the fast path, plus a small protected fallback allowlist that still uses the older per-GIF shared palette; both paths keep transparent backgrounds via an explicit transparency index after magenta-key compositing
 
 ### Adding a New Spinner

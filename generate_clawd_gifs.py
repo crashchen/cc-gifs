@@ -298,19 +298,15 @@ def draw_bubbles(draw, x, y, w, frame, color=LIGHT_BLUE):
         draw.ellipse([bx-r, by-r, bx+r, by+r], fill=color)
 
 
-CURRENT_FRAME = 0
 AUTO_BLINK_FRAME = 3
 
 
-def set_current_frame(frame):
-    """Track the frame currently being rendered for shared animations."""
-    global CURRENT_FRAME
-    CURRENT_FRAME = frame
-
-
-def should_auto_blink(frame_offset=0):
+def should_auto_blink(frame, total_frames=None, frame_offset=0):
     """Use the Blanching-style blink timing across scenes by default."""
-    return (CURRENT_FRAME + frame_offset) % NUM_FRAMES == AUTO_BLINK_FRAME
+    if frame is None:
+        return False
+    cycle = NUM_FRAMES if total_frames is None else total_frames
+    return (frame + frame_offset) % cycle == AUTO_BLINK_FRAME
 
 
 # ---------------------------------------------------------------------------
@@ -519,7 +515,7 @@ def draw_clawd_tool(draw, anchors, grid, palette, tool="wrench"):
         draw.line([tip_x - jaw, tip_y + jaw, tip_x + jaw, tip_y - jaw], fill=palette["gray"], width=max(2, grid // 10))
 
 
-def draw_clawd_icon_accessory(draw, anchors, grid, palette, name):
+def draw_clawd_icon_accessory(draw, anchors, grid, palette, name, frame=None):
     above_x, above_y = anchors["above_head"]
     if name == "idea_bulb":
         draw_lightbulb(draw, above_x, above_y - grid // 2, size=max(12, int(grid * 0.95)), glow=4)
@@ -533,10 +529,11 @@ def draw_clawd_icon_accessory(draw, anchors, grid, palette, name):
     elif name == "heart":
         draw_heart(draw, above_x, above_y, max(3, grid // 4), RED)
     elif name == "steam_puff":
-        draw_steam(draw, above_x - grid // 3, above_y + grid // 2, CURRENT_FRAME, color=palette["gray"])
+        draw_steam(draw, above_x - grid // 3, above_y + grid // 2, 0 if frame is None else frame, color=palette["gray"])
 
 
-def draw_clawd_accessories(draw, ox, oy, grid=GRID, accessories=None, pose="default", body_color=CORAL, head_only=False):
+def draw_clawd_accessories(draw, ox, oy, grid=GRID, accessories=None, pose="default", body_color=CORAL, head_only=False,
+                           frame=None):
     palette = resolve_clawd_palette(body_color)
     anchors = get_clawd_anchors(ox, oy, grid, pose=pose, head_only=head_only)
     for name, opts in _normalize_accessories(accessories):
@@ -555,7 +552,7 @@ def draw_clawd_accessories(draw, ox, oy, grid=GRID, accessories=None, pose="defa
         elif name in {"tool", "wand"}:
             draw_clawd_tool(draw, anchors, grid, palette, tool="wand" if name == "wand" else opts.get("tool", "wrench"))
         elif name in {"idea_bulb", "speech_bubble", "heart", "steam_puff"}:
-            draw_clawd_icon_accessory(draw, anchors, grid, palette, name)
+            draw_clawd_icon_accessory(draw, anchors, grid, palette, name, frame=frame)
 
 
 def _clawd_leg_shift(x, y, pose_cfg):
@@ -627,10 +624,10 @@ def draw_clawd_face(draw, ox, oy, grid=GRID, blink=False, eye_color=BLACK, wink=
 
 
 def draw_clawd(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, eye_color=BLACK, wink=None, mouth=None,
-               pose="default", expression=None, accessories=None):
+               pose="default", expression=None, accessories=None, frame=None, total_frames=None):
     """Draw the original simple blocky Clawd. ox,oy = top-left of the 8-block-wide head."""
     if blink is None:
-        blink = should_auto_blink()
+        blink = should_auto_blink(frame, total_frames=total_frames)
 
     # Head (8x2 blocks)
     for gx in range(8):
@@ -659,14 +656,15 @@ def draw_clawd(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, eye_color=
     draw_clawd_face(draw, ox, oy, grid, blink=blink, eye_color=eye_color, wink=wink, mouth=mouth,
                     pose=pose, expression=expression, head_only=False)
     if accessories:
-        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color, head_only=False)
+        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color,
+                               head_only=False, frame=frame)
 
 
 def draw_clawd_head_only(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, eye_color=BLACK, wink=None, mouth=None,
-                         pose="default", expression=None, accessories=None):
+                         pose="default", expression=None, accessories=None, frame=None, total_frames=None):
     """Draw just the original simple head + upper body portion."""
     if blink is None:
-        blink = should_auto_blink()
+        blink = should_auto_blink(frame, total_frames=total_frames)
 
     for gx in range(8):
         for gy in range(2):
@@ -681,12 +679,13 @@ def draw_clawd_head_only(draw, ox, oy, grid=GRID, blink=None, body_color=CORAL, 
     draw_clawd_face(draw, ox, oy, grid, blink=blink, eye_color=eye_color, wink=wink, mouth=mouth,
                     pose=pose, expression=expression, head_only=True)
     if accessories:
-        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color, head_only=True)
+        draw_clawd_accessories(draw, ox, oy, grid=grid, accessories=accessories, pose=pose, body_color=body_color,
+                               head_only=True, frame=frame)
 
 
-def draw_mini_clawd(draw, ox, oy, grid=10, **kwargs):
+def draw_mini_clawd(draw, ox, oy, grid=10, frame=None, total_frames=None, **kwargs):
     """Draw a small Clawd (for booping scene)."""
-    draw_clawd(draw, ox, oy, grid, **kwargs)
+    draw_clawd(draw, ox, oy, grid, frame=frame, total_frames=total_frames, **kwargs)
 
 
 def clawd_pixel_size(grid=GRID):
@@ -749,14 +748,13 @@ def frames_baking():
     """Clawd with chef hat + oven, bread rising, steam."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd (left side) — position head top-left
         cx, cy = 40, 140
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Chef hat on Clawd head
         hat_x = cx + g  # slightly inset from head left
@@ -796,7 +794,6 @@ def frames_beaming():
     """Clawd in a Star Trek transporter beam — flickering."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -817,7 +814,7 @@ def frames_beaming():
 
         # Clawd flickers
         if f % 3 != 2:
-            draw_clawd(draw, cx, cy, g, blink=(f % 4 == 2))
+            draw_clawd(draw, cx, cy, g, blink=(f % 4 == 2), frame=f)
 
         # Sparkles
         for i, (sx, sy) in enumerate([(cx-25, 60+f*18), (cx+10*g+5, 50+f*12),
@@ -834,19 +831,18 @@ def frames_booping():
     """Clawd booping a small creature's nose, hearts pop up."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd (left)
         cx, cy = 30, 130
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Small creature (right)
         sg = 9  # small grid
         sc_x, sc_y = 280, 195
-        draw_mini_clawd(draw, sc_x, sc_y, sg)
+        draw_mini_clawd(draw, sc_x, sc_y, sg, frame=f)
 
         # Boop arm extending from Clawd's right arm (row 2-3 area)
         arm_ext = min(f, 4)
@@ -884,7 +880,6 @@ def frames_blanching():
     """Clawd sitting in a pot with bubbles and steam."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -898,7 +893,7 @@ def frames_blanching():
         # Clawd head + arms poking out of pot (rows 0-3 only)
         clawd_x = pot_cx - 4 * g
         clawd_y = pot_y - 3 * g - 5
-        draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3))
+        draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
         # Pot body (drawn OVER Clawd's lower part)
         draw.rectangle([pot_x, pot_y, pot_x + pot_w, pot_y + pot_h], fill=GRAY)
@@ -928,14 +923,13 @@ def frames_brewing():
     """Clawd next to a pour-over coffee setup."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd (left)
         cx, cy = 30, 140
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Pour-over (right)
         po_x, po_y = 265, 80
@@ -977,7 +971,6 @@ def frames_canoodling():
     """Two Clawds leaning together with hearts."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -985,10 +978,10 @@ def frames_canoodling():
         lean = [0, 3, 5, 7, 5, 3][f]
 
         # Left Clawd
-        draw_clawd(draw, 30 + lean, 155, g)
+        draw_clawd(draw, 30 + lean, 155, g, frame=f)
 
         # Right Clawd
-        draw_clawd(draw, 222 - lean, 155, g)
+        draw_clawd(draw, 222 - lean, 155, g, frame=f)
 
         # Hearts floating up between them
         mid_x = 200
@@ -1293,13 +1286,12 @@ def frames_cerebrating():
     """Clawd centered with a more realistic pulsing brain icon above."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 160
-        draw_clawd(draw, cx, cy, g, blink=(f == 3))
+        draw_clawd(draw, cx, cy, g, blink=(f == 3), frame=f)
 
         brain_cx = cx + 4 * g
         brain_cy = cy - 20
@@ -1327,7 +1319,6 @@ def frames_channelling():
     num_frames = 8
     body_bob = [0, -1, 0, 1, -1, 1, 0, -1]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = 13
@@ -1398,7 +1389,7 @@ def frames_channelling():
             if (f + i) % 2 == 0:
                 draw_text(draw, "*", sx, sy - (f % 2) * 4, color=YELLOW, scale=3)
 
-        draw_clawd(draw, cx, cy, g, blink=(f in (4, 5)))
+        draw_clawd(draw, cx, cy, g, blink=(f in (4, 5)), frame=f)
 
         draw_loading_label(draw, "Channelling", f)
         frames.append(img)
@@ -1414,7 +1405,6 @@ def frames_choreographing():
     dancer_1 = [(296, 196), (302, 188), (308, 198), (300, 208), (292, 202), (300, 190), (308, 194), (298, 206)]
     dancer_2 = [(344, 202), (336, 190), (330, 202), (338, 212), (346, 204), (338, 192), (330, 198), (340, 210)]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -1429,7 +1419,7 @@ def frames_choreographing():
             draw.rectangle([light_x, 308, light_x + 12, 312], fill=light_color)
 
         cx, cy = 20, 155
-        draw_clawd(draw, cx, cy + [0, -2, -4, -2, 0, 2, 0, -2][f], g, blink=(f == 4))
+        draw_clawd(draw, cx, cy + [0, -2, -4, -2, 0, 2, 0, -2][f], g, blink=(f == 4), frame=f)
 
         arm_y = cy + 2 * g + g // 2
         arm_x = cx + 10 * g
@@ -1465,13 +1455,12 @@ def frames_churning():
     """Clawd beside an open churn with a rotating stirring motion."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 40, 150
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Barrel body
         barrel_x, barrel_y = 235, 180
@@ -1537,12 +1526,11 @@ def frames_coalescing():
 
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
 
         # Clawd watching from bottom-left
-        draw_clawd(draw, 30, 180, GRID)
+        draw_clawd(draw, 30, 180, GRID, frame=f)
 
         t = f / (NUM_FRAMES - 1)
         for i in range(num_dots):
@@ -1578,13 +1566,12 @@ def frames_cogitating():
     """Clawd in thinker pose with thought bubble cycling content."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 185
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Thought bubble
         bubble_x = cx + 5 * g
@@ -1612,13 +1599,12 @@ def frames_concocting():
     """Clawd with goggles, beaker + flask on table, bubbling liquid."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 20, 150
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Goggles on Clawd
         gy_eye = cy + g
@@ -1679,12 +1665,11 @@ def frames_cascading():
     total_frames = 10
 
     for f in range(total_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
 
         # Clawd (left)
-        draw_clawd(draw, 30, 155, GRID)
+        draw_clawd(draw, 30, 155, GRID, frame=f, total_frames=total_frames)
         pool_top = 310 - (10 + f * 8)
 
         # Dense code waterfall (right)
@@ -1747,7 +1732,6 @@ def frames_catapulting():
     ]
 
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
 
@@ -1785,13 +1769,13 @@ def frames_catapulting():
             sling_grid = 9 + (1 if f == 2 else 0)
             clawd_x = max(28, arm_end_x - 4 * sling_grid + 8)
             clawd_y = arm_end_y - 2 * sling_grid + [6, 3, 0][f]
-            draw_clawd(draw, clawd_x, clawd_y, sling_grid, blink=(f in (1, 2)))
+            draw_clawd(draw, clawd_x, clawd_y, sling_grid, blink=(f in (1, 2)), frame=f)
             draw.line([arm_end_x - 10, arm_end_y + 2, clawd_x + 8, clawd_y + 20], fill=GRAY, width=2)
             draw.line([arm_end_x + 10, arm_end_y + 2, clawd_x + 52, clawd_y + 20], fill=GRAY, width=2)
         else:
             idx = f - 3
             clawd_x, clawd_y = flight_positions[idx]
-            draw_clawd(draw, clawd_x, clawd_y, 10, blink=(f in (3, 7)))
+            draw_clawd(draw, clawd_x, clawd_y, 10, blink=(f in (3, 7)), frame=f)
 
             for i, (px, py) in enumerate(flight_positions[:idx]):
                 arc_x = px + 38
@@ -1824,7 +1808,6 @@ def frames_discombobulating():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -1832,7 +1815,7 @@ def frames_discombobulating():
         # Clawd with tilt
         tilt_x = [0, 4, 6, 4, 0, -4][f]
         cx, cy = 130 + tilt_x, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Replace eyes with spirals
         for eye_gx in [1, 6]:
@@ -1880,14 +1863,13 @@ def frames_combobulating():
     ]
 
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd in center
         cx, cy = 145, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Tidy-looking knot bundle (left, shrinks as order takes over).
         tangle_cx, tangle_cy = 60, 190
@@ -1935,13 +1917,12 @@ def frames_conjuring():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 80, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Top hat on ground beside Clawd (right side)
         hat_x = 270
@@ -1991,7 +1972,6 @@ def frames_contemplating():
     """Clawd in thinker pose with animated thought dots."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -1999,7 +1979,7 @@ def frames_contemplating():
         # Slight head bob
         bob = [0, -1, -2, -1, 0, 1][f]
         cx, cy = 120, 180 + bob
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Arm to chin — block from right arm area toward head
         chin_x = cx + 7 * g
@@ -2027,7 +2007,6 @@ def frames_crunching():
     """Clawd as/next to a CPU chip, binary digits streaming."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -2048,7 +2027,7 @@ def frames_crunching():
             draw.rectangle([cpu_x + cpu_w, py, cpu_x + cpu_w + 8, py + 6], fill=GRAY)  # right
 
         # Clawd next to CPU (left)
-        draw_clawd(draw, 30, 155, GRID)
+        draw_clawd(draw, 30, 155, GRID, frame=f)
 
         # Binary streams flowing in from left
         binary = "10110010"
@@ -2078,13 +2057,12 @@ def frames_cultivating():
     frames = []
     total_frames = 12
     for f in range(total_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID - 1
 
         cx, cy = 22, 162
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f, total_frames=total_frames)
 
         # Ground
         ground_y = 295
@@ -2162,13 +2140,12 @@ def frames_deciphering():
     decoded_text = ["C", "o", "d", "e", "H", "e", "r", "e"]
 
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 20, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Scrambled text block (right side)
         text_start_x = 220
@@ -2214,13 +2191,12 @@ def frames_cooking():
     """Clawd with chef hat, pan on stove, food flipping."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 150
-        draw_clawd(draw, cx, cy, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})])
+        draw_clawd(draw, cx, cy, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})], frame=f)
 
         # Stove (right)
         stove_x, stove_y = 210, 220
@@ -2260,13 +2236,12 @@ def frames_crafting():
     """Clawd at workbench with hammer, assembling blocks."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Workbench
         bench_x, bench_y = 220, 260
@@ -2310,13 +2285,12 @@ def frames_deliberating():
     """Clawd with scales of justice, weighing options."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 180
-        draw_clawd(draw, cx, cy, g, blink=(f == 3))
+        draw_clawd(draw, cx, cy, g, blink=(f == 3), frame=f)
 
         # Scales above head
         scale_cx = cx + 4 * g
@@ -2351,13 +2325,12 @@ def frames_divining():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Crystal ball (right)
         ball_cx, ball_cy = 300, 200
@@ -2394,13 +2367,12 @@ def frames_elucidating():
     """Clawd with lightbulb above, illuminating an open book."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 175
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Lightbulb above head
         bulb_cx = cx + 4 * g
@@ -2440,13 +2412,12 @@ def frames_embellishing():
     """Clawd turning a plain plaque into an ornate decorated piece."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 28, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Plaque on a stand (right)
         plaque_x, plaque_y = 248, 108
@@ -2512,13 +2483,12 @@ def frames_enchanting():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 175
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Wand held up
         wand_x = cx + 8 * g
@@ -2548,13 +2518,12 @@ def frames_envisioning():
     """Clawd with thought bubble showing a blueprint/plan."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 50, 190
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Large thought bubble
         bx, by = 200, 60
@@ -2599,13 +2568,12 @@ def frames_fiddle_faddling():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 175
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Trinkets in an arc above Clawd (juggling)
         trinket_colors = [RED, BLUE, GREEN, YELLOW, PURPLE]
@@ -2634,13 +2602,12 @@ def frames_finagling():
     """Clawd with wrench and puzzle pieces clicking together."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Two puzzle pieces coming together
         gap = max(0, (5 - f) * 8)  # pieces close over frames
@@ -2685,14 +2652,13 @@ def frames_flibbertigibbeting():
         ("@%§", "&#!"),
     ]
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd talking (mouth animation via blink substitute)
         cx, cy = 60, 185
-        draw_clawd(draw, cx, cy, g, blink=(f % 2 == 0))
+        draw_clawd(draw, cx, cy, g, blink=(f % 2 == 0), frame=f)
 
         # Multiple speech bubbles appearing rapidly
         bubbles = [
@@ -2726,13 +2692,12 @@ def frames_flowing():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Flowing wave lines around Clawd
         wave_colors = [BLUE, LIGHT_BLUE, TEAL]
@@ -2743,7 +2708,7 @@ def frames_flowing():
                 draw.rectangle([x, wy, x + 3, wy + 3], fill=wc)
 
         # Re-draw Clawd on top
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Zen circle above
         zen_phase = f * 60
@@ -2759,13 +2724,12 @@ def frames_forging():
     """Clawd swinging hammer on anvil with sparks."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 20, 155
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Anvil (larger and closer to the hammer impact).
         anvil_x, anvil_y = 245, 242
@@ -2808,7 +2772,6 @@ def frames_frolicking():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -2816,7 +2779,7 @@ def frames_frolicking():
         # Clawd bouncing
         bounce = [0, -10, -20, -20, -10, 0][f]
         cx, cy = 130, 170 + bounce
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Ground with flowers
         ground_y = 305
@@ -2857,14 +2820,13 @@ def frames_germinating():
     frames = []
     total_frames = 12
     for f in range(total_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         # Clawd watching from left
         cx, cy = 20, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f, total_frames=total_frames)
 
         # Ground/soil
         soil_y = 260
@@ -2937,13 +2899,12 @@ def frames_hashing():
     """Clawd chopping data, hash symbols and bits flying."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Cutting board (right)
         board_x, board_y = 230, 250
@@ -2986,7 +2947,6 @@ def frames_hatching():
     center_wobble = [0, 0, -2, 0, 2, 0, -1, 1, 0, 0]
     bounce_pattern = [0, -10, 0, -8, 0]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         egg_specs = [
@@ -3028,7 +2988,7 @@ def frames_hatching():
                 baby_grid = 5
                 baby_x = egg_cx - 4 * baby_grid
                 baby_y = egg_cy - 10 - rise + extra_bounce
-                draw_clawd(draw, baby_x, baby_y, grid=baby_grid, blink=(f == start + 1 or rel == 5))
+                draw_clawd(draw, baby_x, baby_y, grid=baby_grid, blink=(f == start + 1 or rel == 5), frame=f)
                 for sx, sy in [(egg_cx - 26, egg_cy - 40 - cap_lift // 2), (egg_cx + 18, egg_cy - 34 - cap_lift // 3)]:
                     draw.polygon([(sx, sy), (sx + 10, sy - 8), (sx + 15, sy + 4)], fill=WHITE, outline=GRAY)
 
@@ -3045,7 +3005,6 @@ def frames_recombobulating():
     settle_offsets = [0, 0, 0, 0, 0, -2, 0, -1]
 
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         cx, cy = 130, 170 + settle_offsets[f]
@@ -3098,13 +3057,12 @@ def frames_herding():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 30, 165
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Shepherd crook extending from Clawd
         crook_x = cx + 10 * g + 5
@@ -3143,13 +3101,12 @@ def frames_honking():
     """Clawd as a goose honking with sound waves."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 100, 160
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Megaphone / horn extending from Clawd's right
         horn_x = cx + 10 * g
@@ -3185,13 +3142,12 @@ def frames_hullaballooing():
     frames = []
     import math
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         cx, cy = 120, 175
-        draw_clawd(draw, cx, cy, g)
+        draw_clawd(draw, cx, cy, g, frame=f)
 
         # Whirlwind of objects orbiting
         items = [
@@ -3238,14 +3194,13 @@ def frames_wrangling():
     accents = [BLUE, TEAL, GREEN, YELLOW, PURPLE]
 
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         clawd_x = [34, 32, 28, 24, 20, 18, 22, 28][f]
         clawd_y = [168, 170, 174, 178, 176, 174, 172, 170][f]
-        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2))
+        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2), frame=f)
 
         hand_x = clawd_x + 10 * g + 4
         hand_y = clawd_y + 2 * g + g // 2
@@ -3297,13 +3252,12 @@ def frames_whirlpooling():
     frames = []
     num_frames = 10
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         bob = [0, -2, -4, -2, 0, 2, 0, -2, 0, 2][f]
-        draw_clawd(draw, 42, 126 + bob, g, blink=(f == 4))
+        draw_clawd(draw, 42, 126 + bob, g, blink=(f == 4), frame=f)
 
         cx, cy = 246, 252
         pull = f / (num_frames - 1)
@@ -3353,14 +3307,13 @@ def frames_unfurling():
     open_steps = [24, 56, 92, 126, 158, 188, 210, 224]
     flutters = [0, -2, -5, -3, -1, 2, 4, 1]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         clawd_x = 34 + [0, 2, 4, 6, 4, 2, 0, -2][f]
         clawd_y = 170 + [0, -2, -4, -2, 0, 2, 0, -2][f]
-        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 5))
+        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 5), frame=f)
 
         scroll_x = 218
         scroll_y = 126
@@ -3467,13 +3420,12 @@ def frames_topsy_turvying():
     }
 
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         draw_clawd(draw, 40 + [0, -2, 3, -4, 2, 5, -1, 3, 0, -2][f],
-                   168 + [0, 2, 0, -3, 4, -2, 3, 0, -1, 2][f], g, blink=(f == 4))
+                   168 + [0, 2, 0, -3, 4, -2, 3, 0, -1, 2][f], g, blink=(f == 4), frame=f)
 
         progress = f / (num_frames - 1)
         chaos = math.sin(progress * math.pi)
@@ -3523,7 +3475,6 @@ def frames_tomfoolering():
         [(118, 102), (248, 92), (286, 128)],
     ]
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -3531,7 +3482,7 @@ def frames_tomfoolering():
         clawd_x = 118 + sway[f]
         clawd_y = 170 + bounce[f]
         wink = "both" if f in [1, 2, 4, 5] else None
-        draw_clawd(draw, clawd_x, clawd_y, g, blink=False, wink=wink)
+        draw_clawd(draw, clawd_x, clawd_y, g, blink=False, wink=wink, frame=f)
 
         hat_x = clawd_x + g
         hat_y = clawd_y - int(g * 1.8)
@@ -3568,12 +3519,11 @@ def frames_transmuting():
     frames = []
     num_frames = 8
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
-        draw_clawd(draw, 34, 160, g, blink=(f == 3))
+        draw_clawd(draw, 34, 160, g, blink=(f == 3), frame=f)
 
         hand_x = 34 + 10 * g + 4
         hand_y = 160 + 2 * g + g // 2
@@ -3630,13 +3580,12 @@ def frames_tinkering():
     num_frames = 8
     tool_angles = [-20, -8, 6, 16, 8, -4, -12, -2]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
 
         clawd_x, clawd_y = 34, 158
-        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 5))
+        draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 5), frame=f)
 
         bench_x, bench_y = 224, 248
         draw.rectangle([bench_x, bench_y, 382, bench_y + 18], fill=BROWN)
@@ -3691,7 +3640,6 @@ def frames_thundering():
     frames = []
     num_frames = 8
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         flash = f % 2 == 1
@@ -3711,7 +3659,7 @@ def frames_thundering():
 
         body_color = (245, 245, 245) if flash else CORAL
         eye_color = DARK_GRAY if flash else BLACK
-        draw_clawd(draw, 120, 185, g, blink=(f == 4), body_color=body_color, eye_color=eye_color)
+        draw_clawd(draw, 120, 185, g, blink=(f == 4), body_color=body_color, eye_color=eye_color, frame=f)
 
         if flash:
             draw_lightning_bolt(draw, 178 + (f == 5) * 10, 54, scale=1.0, color=(255, 244, 170))
@@ -3732,10 +3680,9 @@ def frames_nucleating():
     particle_count = 18
     center_x, center_y = 292, 162
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
-        draw_clawd(draw, 34, 170, GRID, blink=(f == 4))
+        draw_clawd(draw, 34, 170, GRID, blink=(f == 4), frame=f)
 
         progress = f / (num_frames - 1)
         for ring_idx, radius in enumerate([72, 50]):
@@ -3781,10 +3728,9 @@ def frames_osmosing():
     left_particles = [(188, 92), (208, 124), (176, 154), (214, 184), (182, 214), (204, 248), (168, 276), (220, 302)]
     right_particles = [(296, 110), (324, 166), (308, 234), (332, 286)]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
-        draw_clawd(draw, 28, 160, GRID, blink=(f == 3))
+        draw_clawd(draw, 28, 160, GRID, blink=(f == 3), frame=f)
 
         glow_w = 12 + (f % 3) * 4
         draw.rectangle([membrane_x - glow_w, 74, membrane_x + glow_w, 314], fill=LIGHT_BLUE)
@@ -3837,7 +3783,6 @@ def frames_prestidigitating():
         [(238, 170), (280, 132), (324, 126), (350, 146)],
     ]
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         g = GRID
@@ -3847,7 +3792,7 @@ def frames_prestidigitating():
         draw.rectangle([0, 304, 400, 314], fill=DARK_GRAY)
 
         cx, cy = 42, 164 + [0, -2, -4, -2, 0, 2, 0, -2][f]
-        draw_clawd(draw, cx, cy, g, blink=(f == 4))
+        draw_clawd(draw, cx, cy, g, blink=(f == 4), frame=f)
         hand_x = cx + 10 * g + 4
         hand_y = cy + 2 * g + g // 2
         wand_tip_x = hand_x + 34
@@ -3899,7 +3844,6 @@ def make_frames(word, draw_scene_fn):
     """Wrap a scene-drawing function into a list of 6 RGBA frames with text."""
     frames = []
     for f in range(NUM_FRAMES):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
         draw_scene_fn(draw, f, img)
@@ -3912,7 +3856,7 @@ def sc_bebopping(draw, f, img):
     """Clawd head-bops through a jazzier, syncopated groove with sharper notes and beat marks."""
     cx = 126 + [-2, 2, 4, 0, -4, -1][f]
     cy = 172 + [6, -6, 2, -8, 0, -4][f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 4), accessories=["headphones"])
+    draw_clawd(draw, cx, cy, g, blink=(f == 4), accessories=["headphones"], frame=f)
     for i in range(4):
         line_y = cy + 18 + i * 10
         draw.line([cx - 34 - i * 10, line_y, cx - 10 - i * 4, line_y], fill=GRAY, width=1)
@@ -3935,7 +3879,7 @@ def sc_boogieing(draw, f, img):
     """Clawd hits a brighter disco groove under a tiny mirror ball."""
     cx = 116 + [-8, 8, 14, 2, -10, 6][f]
     cy = 170 + [0, -12, -2, -10, 2, -8][f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 3), wink="right" if f in {1, 4} else None)
+    draw_clawd(draw, cx, cy, g, blink=(f == 3), wink="right" if f in {1, 4} else None, frame=f)
 
     ball_x, ball_y = 286, 72
     draw.ellipse([ball_x - 18, ball_y - 18, ball_x + 18, ball_y + 18], fill=LIGHT_BLUE, outline=WHITE)
@@ -3970,7 +3914,7 @@ def sc_boogieing(draw, f, img):
 
 
 def sc_hustling(draw, f, img):
-    draw_clawd(draw, 60, 155 + [-2, 0, 2, 0, -2, 0][f], g)
+    draw_clawd(draw, 60, 155 + [-2, 0, 2, 0, -2, 0][f], g, frame=f)
     bx, by = 260, 230
     draw.rectangle([bx, by, bx+60, by+45], fill=BROWN)
     draw.rectangle([bx+25, by-5, bx+35, by+5], fill=DARK_BROWN)
@@ -3988,7 +3932,7 @@ def sc_hyperspacing(draw, f, img):
     """Clawd punches into a classic star-line hyperspace tunnel."""
     clawd_x = 74 + [0, 8, 16, 22, 16, 8][f]
     clawd_y = 164 + [0, -4, -8, -4, 0, 2][f]
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), wink="right" if f == 2 else None)
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), wink="right" if f == 2 else None, frame=f)
 
     vp_x, vp_y = 302, 166
     ring_specs = [
@@ -4127,7 +4071,7 @@ def sc_gallivanting(draw, f, img):
     ys = [178, 162, 174, 160, 172, 158]
     cx = xs[f]
     cy = ys[f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 2), wink="right", mouth="cheeky")
+    draw_clawd(draw, cx, cy, g, blink=(f == 2), wink="right", mouth="cheeky", frame=f)
     for i in range(max(0, f - 1), f + 1):
         tx = xs[i] - 18
         ty = ys[i] + 94
@@ -4151,7 +4095,7 @@ def sc_gallivanting(draw, f, img):
 def sc_gitifying(draw, f, img):
     """Clawd turns an idea into a commit graph with branches, nodes, diffs, and a merge."""
     clawd_x, clawd_y = 32, 166
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
 
     panel_x, panel_y = 214, 96
     draw.rectangle([panel_x, panel_y, 362, 246], fill=(246, 248, 250), outline=DARK_GRAY)
@@ -4185,7 +4129,7 @@ def sc_gitifying(draw, f, img):
 
 
 def sc_ideating(draw, f, img):
-    draw_clawd(draw, 120, 185, g, blink=(f == 3))
+    draw_clawd(draw, 120, 185, g, blink=(f == 3), frame=f)
     idea_cx = 120 + 4 * g
     idea_cy = 86
     bulb_starts = [(78, 82), (122, 38), (304, 74), (252, 42), (332, 118)]
@@ -4208,7 +4152,7 @@ def sc_ideating(draw, f, img):
 
 
 def sc_imagining(draw, f, img):
-    draw_clawd(draw, 46, 190, g)
+    draw_clawd(draw, 46, 190, g, frame=f)
     bx, by, bw, bh = 188, 48, 164, 112
     draw_thought_bubble(draw, bx, by, bw, bh)
 
@@ -4245,7 +4189,7 @@ def sc_imagining(draw, f, img):
 
 
 def sc_incubating(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     ix, iy = 240, 180
     draw.rectangle([ix, iy, ix+120, iy+80], fill=LIGHT_BLUE)
     draw.rectangle([ix, iy, ix+120, iy+10], fill=GRAY)
@@ -4258,7 +4202,7 @@ def sc_incubating(draw, f, img):
 
 def sc_jiving(draw, f, img):
     sway = [0, -8, -12, -8, 0, 8][f]
-    draw_clawd(draw, 130 + sway, 165, g)
+    draw_clawd(draw, 130 + sway, 165, g, frame=f)
     draw_music_note(draw, 80, 80 + ((f * 8) % 30), PURPLE)
     draw_music_note(draw, 300, 60 + ((f * 10) % 40), PINK)
     draw_music_note(draw, 200, 50 + ((f * 6) % 35), ORANGE)
@@ -4274,7 +4218,7 @@ def sc_levitating(draw, f, img):
     hover = [0, -6, -12, -12, -6, 0][f]
     clawd_x = 130
     clawd_y = 126 + hover
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
     rx = clawd_x + 4 * g
     for i in range(3):
         ry = 314 - i * 16 - f * 2
@@ -4299,7 +4243,7 @@ def sc_lollygaging(draw, f, img):
     ys = [178, 172, 178, 172, 178, 174]
     cx = xs[f]
     cy = ys[f]
-    draw_clawd(draw, cx, cy, g, blink=(f in {2, 4}), wink="right" if f == 1 else None)
+    draw_clawd(draw, cx, cy, g, blink=(f in {2, 4}), wink="right" if f == 1 else None, frame=f)
 
     path_pts = [(26, 294), (58, 288), (88, 296), (120, 290), (150, 298), (182, 292)]
     for (x1, y1), (x2, y2) in zip(path_pts, path_pts[1:]):
@@ -4322,7 +4266,7 @@ def sc_lollygaging(draw, f, img):
 
 
 def sc_manifesting(draw, f, img):
-    draw_clawd(draw, 34, 170, g)
+    draw_clawd(draw, 34, 170, g, frame=f)
     pedestal_x, pedestal_y = 252, 248
     draw.rectangle([pedestal_x, pedestal_y, pedestal_x + 86, pedestal_y + 14], fill=DARK_GRAY)
     draw.rectangle([pedestal_x + 22, pedestal_y - 40, pedestal_x + 64, pedestal_y], fill=GRAY)
@@ -4379,7 +4323,7 @@ def sc_manifesting(draw, f, img):
 
 
 def sc_marinating(draw, f, img):
-    draw_clawd_head_only(draw, 120, 135, g, blink=(f == 3))
+    draw_clawd_head_only(draw, 120, 135, g, blink=(f == 3), frame=f)
     bx, by = 90, 190
     bw = 220
     draw.rectangle([bx, by, bx+bw, by+80], fill=GRAY)
@@ -4392,7 +4336,7 @@ def sc_marinating(draw, f, img):
 
 
 def sc_meandering(draw, f, img):
-    draw_clawd(draw, 40 + f * 10, 180, g)
+    draw_clawd(draw, 40 + f * 10, 180, g, frame=f)
     for x in range(30, 380, 5):
         py = 260 + int(20 * math.sin(x * 0.04))
         draw.rectangle([x, py, x+4, py+4], fill=BROWN)
@@ -4404,7 +4348,7 @@ def sc_meandering(draw, f, img):
 
 
 def sc_metamorphosing(draw, f, img):
-    draw_clawd(draw, 24, 166, g)
+    draw_clawd(draw, 24, 166, g, frame=f)
     branch_y = 86
     draw.line([208, branch_y, 360, branch_y], fill=DARK_BROWN, width=5)
     draw.line([278, branch_y, 262, branch_y + 26], fill=DARK_BROWN, width=3)
@@ -4456,7 +4400,7 @@ def sc_metamorphosing(draw, f, img):
 
 def sc_moseying(draw, f, img):
     walk_x = 60 + f * 12
-    draw_clawd(draw, walk_x, 170, g)
+    draw_clawd(draw, walk_x, 170, g, frame=f)
     hx = walk_x - g
     hy = 170 - int(g * 1.6)
     draw.rectangle([hx-g, hy+g, hx+11*g, hy+g+g//3], fill=BROWN)
@@ -4470,7 +4414,7 @@ def sc_moseying(draw, f, img):
 
 
 def sc_mulling(draw, f, img):
-    draw_clawd(draw, 40, 160, g)
+    draw_clawd(draw, 40, 160, g, frame=f)
     mx, my = 270, 210
     draw.rectangle([mx, my, mx+50, my+55], fill=RED)
     draw.rectangle([mx+5, my+5, mx+45, my+50], fill=(150, 30, 30))
@@ -4483,7 +4427,7 @@ def sc_mulling(draw, f, img):
 
 
 def sc_mustering(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     positions = [
         (220, 250), (245, 250), (270, 250), (295, 250), (320, 250),
         (230, 270), (255, 270), (280, 270), (305, 270),
@@ -4498,7 +4442,7 @@ def sc_mustering(draw, f, img):
 
 def sc_musing(draw, f, img):
     bob = [0, -1, -2, -1, 0, 1][f]
-    draw_clawd(draw, 120, 185 + bob, g, blink=(f == 4))
+    draw_clawd(draw, 120, 185 + bob, g, blink=(f == 4), frame=f)
     shapes = [(80, 60, PINK), (200, 40, TEAL), (300, 80, PURPLE),
               (160, 70, YELLOW), (260, 50, ORANGE)]
     for i, (sx, sy, c) in enumerate(shapes):
@@ -4510,7 +4454,7 @@ def sc_musing(draw, f, img):
 
 
 def sc_nesting(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     nx, ny = 260, 240
     draw.ellipse([nx, ny, nx+100, ny+40], fill=BROWN)
     draw.ellipse([nx+5, ny+5, nx+95, ny+35], fill=DARK_BROWN)
@@ -4524,7 +4468,7 @@ def sc_nesting(draw, f, img):
 
 
 def sc_noodling(draw, f, img):
-    draw_clawd(draw, 30, 165, g)
+    draw_clawd(draw, 30, 165, g, frame=f)
     gx2, gy2 = 250, 170
     draw.ellipse([gx2, gy2, gx2+70, gy2+90], fill=BROWN)
     draw.ellipse([gx2+5, gy2+5, gx2+65, gy2+85], fill=DARK_BROWN)
@@ -4539,7 +4483,7 @@ def sc_noodling(draw, f, img):
 
 
 def sc_nucleating(draw, f, img):
-    draw_clawd(draw, 30, 170, g)
+    draw_clawd(draw, 30, 170, g, frame=f)
     cx2, cy2 = 290, 180
     cr = 4 + f * 3
     draw.ellipse([cx2-cr, cy2-cr, cx2+cr, cy2+cr], fill=TEAL)
@@ -4552,7 +4496,7 @@ def sc_nucleating(draw, f, img):
 
 
 def sc_osmosing(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     mx = 250
     for y in range(80, 300, 12):
         draw.rectangle([mx, y, mx+3, y+6], fill=GRAY)
@@ -4564,7 +4508,7 @@ def sc_osmosing(draw, f, img):
 
 
 def sc_percolating(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     px2, py2 = 260, 120
     pw, ph = 80, 140
     draw.rectangle([px2, py2, px2+pw, py2+ph], fill=GRAY)
@@ -4583,7 +4527,7 @@ def sc_perambulating(draw, f, img):
     ys = [176, 170, 176, 170, 176, 170]
     cx = xs[f]
     cy = ys[f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 2))
+    draw_clawd(draw, cx, cy, g, blink=(f == 2), frame=f)
 
     path_pts = [(22, 294), (70, 286), (126, 294), (184, 286), (246, 294), (314, 286), (366, 294)]
     for (x1, y1), (x2, y2) in zip(path_pts, path_pts[1:]):
@@ -4608,7 +4552,7 @@ def sc_perambulating(draw, f, img):
 
 
 def sc_perusing(draw, f, img):
-    draw_clawd(draw, 40, 165, g)
+    draw_clawd(draw, 40, 165, g, frame=f)
     bkx, bky = 240, 130
     draw.rectangle([bkx, bky, bkx+130, bky+160], fill=WHITE)
     draw.rectangle([bkx, bky, bkx+130, bky+160], outline=BROWN, width=2)
@@ -4621,7 +4565,7 @@ def sc_perusing(draw, f, img):
 
 
 def sc_philosophising(draw, f, img):
-    draw_clawd(draw, 120, 190, g)
+    draw_clawd(draw, 120, 190, g, frame=f)
     draw.rectangle([300, 120, 320, 300], fill=GRAY)
     draw.rectangle([295, 115, 325, 125], fill=DARK_GRAY)
     draw.rectangle([295, 295, 325, 305], fill=DARK_GRAY)
@@ -4631,7 +4575,7 @@ def sc_philosophising(draw, f, img):
 
 
 def sc_pollinating(draw, f, img):
-    draw_clawd(draw, 118, 170, g, blink=(f == 4))
+    draw_clawd(draw, 118, 170, g, blink=(f == 4), frame=f)
     flowers = [
         (74, 272, PINK, 16),
         (194, 252, (255, 175, 95), 20),
@@ -4663,7 +4607,7 @@ def sc_pollinating(draw, f, img):
 
 def sc_pondering(draw, f, img):
     bob = [0, -1, -2, -1, 0, 1][f]
-    draw_clawd(draw, 120, 185 + bob, g)
+    draw_clawd(draw, 120, 185 + bob, g, frame=f)
     draw.rectangle([120+7*g, 185+bob+g, 120+8*g, 185+bob+2*g], fill=CORAL)
     n = ((f % 6) // 2) + 1
     for d in range(n):
@@ -4672,7 +4616,7 @@ def sc_pondering(draw, f, img):
 
 
 def sc_pontificating(draw, f, img):
-    draw_clawd(draw, 60, 175, g, blink=(f % 3 == 0))
+    draw_clawd(draw, 60, 175, g, blink=(f % 3 == 0), frame=f)
     draw.rectangle([250, 220, 350, 300], fill=BROWN)
     draw.rectangle([245, 215, 355, 225], fill=DARK_BROWN)
     for i in range(min(f + 1, 4)):
@@ -4683,7 +4627,7 @@ def sc_pontificating(draw, f, img):
 
 
 def sc_precipitating(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     bx2, by2 = 250, 140
     draw.rectangle([bx2, by2, bx2+80, by2+120], fill=(200, 200, 220))
     lh = 80 + f * 5
@@ -4693,7 +4637,7 @@ def sc_precipitating(draw, f, img):
 
 
 def sc_prestidigitating(draw, f, img):
-    draw_clawd(draw, 80, 170, g)
+    draw_clawd(draw, 80, 170, g, frame=f)
     for i in range(5):
         a = -20 + i * 10 + f * 3
         cx2, cy2 = 280, 200
@@ -4708,7 +4652,7 @@ def sc_prestidigitating(draw, f, img):
 
 
 def sc_proofing(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     dx, dy = 260, 200
     rise = f * 8
     draw.rectangle([dx-5, dy+50, dx+75, dy+60], fill=BROWN)
@@ -4717,7 +4661,7 @@ def sc_proofing(draw, f, img):
 
 
 def sc_propagating(draw, f, img):
-    draw_clawd(draw, 30, 170, g)
+    draw_clawd(draw, 30, 170, g, frame=f)
     nodes = [(250, 180), (300, 140), (350, 200), (280, 240), (320, 100)]
     for i, (nx2, ny2) in enumerate(nodes):
         if i <= f:
@@ -4729,14 +4673,14 @@ def sc_propagating(draw, f, img):
 
 def sc_puttering(draw, f, img):
     walk = f * 8
-    draw_clawd(draw, 50 + walk, 170, g)
+    draw_clawd(draw, 50 + walk, 170, g, frame=f)
     items = [(200, 260, GRAY, 15), (260, 255, BROWN, 12), (320, 260, GREEN, 10), (160, 265, BLUE, 11)]
     for ix, iy, ic, isz in items:
         draw.rectangle([ix, iy, ix+isz, iy+isz], fill=ic)
 
 
 def sc_puzzling(draw, f, img):
-    draw_clawd(draw, 30, 165, g)
+    draw_clawd(draw, 30, 165, g, frame=f)
     colors2 = [RED, BLUE, GREEN, YELLOW, PURPLE, ORANGE]
     for i in range(min(f + 1, 6)):
         px = 200 + (i % 3) * 50
@@ -4748,7 +4692,7 @@ def sc_puzzling(draw, f, img):
 
 
 def sc_quantumizing(draw, f, img):
-    draw_clawd(draw, 120, 182, g, blink=(f == 3))
+    draw_clawd(draw, 120, 182, g, blink=(f == 3), frame=f)
     cx2, cy2 = 120 + 4 * g, 94
     glow = 10 + (f % 3) * 4
     draw.ellipse([cx2 - glow, cy2 - glow, cx2 + glow, cy2 + glow], fill=(255, 210, 130))
@@ -4777,7 +4721,7 @@ def sc_quantumizing(draw, f, img):
 
 
 def sc_razzmatazzing(draw, f, img):
-    draw_clawd(draw, 120, 170, g)
+    draw_clawd(draw, 120, 170, g, frame=f)
     for i in range(5):
         lx = 40 + i * 80
         c = [RED, YELLOW, BLUE, PINK, GREEN][i]
@@ -4791,7 +4735,7 @@ def sc_razzmatazzing(draw, f, img):
 
 
 def sc_reticulating(draw, f, img):
-    draw_clawd(draw, 30, 170, g)
+    draw_clawd(draw, 30, 170, g, frame=f)
     gx2, gy2 = 200, 100
     lines = min(f + 1, 6)
     for i in range(lines):
@@ -4804,7 +4748,7 @@ def sc_reticulating(draw, f, img):
 
 def sc_ruminating(draw, f, img):
     clawd_x, clawd_y = 48, 184
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
     draw.rectangle([clawd_x + 7 * g, clawd_y + g + 6, clawd_x + 8 * g + 2, clawd_y + 2 * g + 8], fill=CORAL)
     bubble_x, bubble_y, bubble_w, bubble_h = 176, 56, 160, 104
     draw_thought_bubble(draw, bubble_x, bubble_y, bubble_w, bubble_h)
@@ -4823,7 +4767,7 @@ def sc_ruminating(draw, f, img):
 
 def sc_scheming(draw, f, img):
     clawd_x, clawd_y = 38, 170
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=False, wink="right" if f in [1, 4] else None)
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=False, wink="right" if f in [1, 4] else None, frame=f)
     if f % 2 == 0:
         draw.rectangle([clawd_x + 2 * g, clawd_y + g + 2, clawd_x + 2 * g + 5, clawd_y + g + 7], fill=RED)
     bx, by = 214, 86
@@ -4857,7 +4801,7 @@ def sc_scheming(draw, f, img):
 
 def sc_schlepping(draw, f, img):
     walk = f * 6
-    draw_clawd(draw, 40 + walk, 170, g)
+    draw_clawd(draw, 40 + walk, 170, g, frame=f)
     bx2 = 40 + walk + 2 * g
     by2 = 170 - g
     draw.rectangle([bx2, by2, bx2+5*g, by2+3*g], fill=BROWN)
@@ -4868,7 +4812,7 @@ def sc_schlepping(draw, f, img):
 
 def sc_scurrying(draw, f, img):
     speed = f * 20
-    draw_clawd(draw, 30 + speed, 170, g)
+    draw_clawd(draw, 30 + speed, 170, g, frame=f)
     sweat_x = 30 + speed + 3 * g
     sweat_y = 170 - 18 + [-2, -5, -2, 0, -2, 0][f]
     draw_sweat_drop(draw, sweat_x, sweat_y, scale=4 if f % 2 == 0 else 5, color=LIGHT_BLUE)
@@ -4883,7 +4827,7 @@ def sc_scurrying(draw, f, img):
 
 
 def sc_seasoning(draw, f, img):
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
     px2, py2 = 260, 230
     draw.ellipse([px2, py2, px2+90, py2+40], fill=WHITE)
     draw.ellipse([px2+10, py2+5, px2+80, py2+35], fill=(200, 180, 100))
@@ -4901,7 +4845,7 @@ def sc_skedaddling(draw, f, img):
     """Clawd suddenly bolts away with a dust trail and startled exclamation."""
     run_x = 34 + [0, 22, 48, 80, 120, 164][f]
     run_y = 170 + [0, -10, -4, -12, -6, -2][f]
-    draw_clawd(draw, run_x, run_y, g, pose="lean_right", blink=(f == 1))
+    draw_clawd(draw, run_x, run_y, g, pose="lean_right", blink=(f == 1), frame=f)
 
     if f <= 2:
         draw_text(draw, "!", run_x - 14, run_y - 26 + (f % 2) * 2, color=RED, scale=3)
@@ -4921,7 +4865,7 @@ def sc_skedaddling(draw, f, img):
 
 def sc_shimmying(draw, f, img):
     sway = [-6, -3, 0, 3, 6, 3][f]
-    draw_clawd(draw, 130 + sway, 170, g)
+    draw_clawd(draw, 130 + sway, 170, g, frame=f)
     for i in range(3):
         ly = 185 + i * 15
         draw.line([80, ly, 110, ly], fill=CORAL, width=1)
@@ -4931,7 +4875,7 @@ def sc_shimmying(draw, f, img):
 
 
 def sc_shucking(draw, f, img):
-    draw_clawd(draw, 34, 162, g, blink=(f == 4))
+    draw_clawd(draw, 34, 162, g, blink=(f == 4), frame=f)
     cx2, cy2 = 292, 202
     spread = [12, 20, 28, 38, 48, 56][f]
     draw.line([34 + 10 * g, 162 + 2 * g + g // 2, cx2 - 30, cy2 + 6], fill=GREEN, width=2)
@@ -4956,7 +4900,7 @@ def sc_shucking(draw, f, img):
 
 
 def sc_simmering(draw, f, img):
-    draw_clawd(draw, 30, 150, g)
+    draw_clawd(draw, 30, 150, g, frame=f)
     px2, py2 = 240, 190
     pw2 = 120
     draw.rectangle([px2, py2+60, px2+pw2, py2+75], fill=DARK_GRAY)
@@ -4968,7 +4912,7 @@ def sc_simmering(draw, f, img):
 
 
 def sc_slithering(draw, f, img):
-    draw_clawd(draw, 120, 170, g)
+    draw_clawd(draw, 120, 170, g, frame=f)
     for x in range(0, CANVAS, 6):
         y2 = 250 + int(25 * math.sin((x + f * 30) * 0.04))
         c = GREEN if x % 12 < 6 else LIME
@@ -4980,7 +4924,7 @@ def sc_slithering(draw, f, img):
 
 
 def sc_smooshing(draw, f, img):
-    draw_clawd(draw, 120, 175, g)
+    draw_clawd(draw, 120, 175, g, frame=f)
     squeeze = f * 4
     ox2, oy2 = 250, 180
     w2 = 50 + squeeze
@@ -4996,7 +4940,7 @@ def sc_spelunking(draw, f, img):
     draw.polygon([(0, 120), (70, 80), (160, 100), (220, 60), (310, 90),
                   (400, 70), (400, 400), (0, 400)], fill=(50, 50, 50))
     clawd_x, clawd_y = 100, 200
-    draw_clawd(draw, clawd_x, clawd_y, g)
+    draw_clawd(draw, clawd_x, clawd_y, g, frame=f)
 
     light_y = clawd_y + 2 * g + g // 2 + [-2, 0, 1, 0, -1, 0][f]
     light_x = clawd_x + 10 * g - 6
@@ -5075,11 +5019,11 @@ def sc_spinning(draw, f, img):
 
     clawd_grid = 11
     bob = [0, -2, -4, -2, 0, 2][f % NUM_FRAMES]
-    draw_clawd(draw, cx2 - 4 * clawd_grid, cy2 - 4 * clawd_grid + bob, grid=clawd_grid)
+    draw_clawd(draw, cx2 - 4 * clawd_grid, cy2 - 4 * clawd_grid + bob, grid=clawd_grid, frame=f)
 
 
 def sc_stewing(draw, f, img):
-    draw_clawd_head_only(draw, 110, 140, g, blink=(f == 4))
+    draw_clawd_head_only(draw, 110, 140, g, blink=(f == 4), frame=f)
     px2, py2 = 80, 195
     pw2 = 240
     draw.rectangle([px2, py2, px2+pw2, py2+80], fill=GRAY)
@@ -5094,7 +5038,7 @@ def sc_stewing(draw, f, img):
 
 def sc_sublimating(draw, f, img):
     """A solid crystal shrinks directly into vapor without becoming liquid first."""
-    draw_clawd(draw, 34, 168, g, blink=(f == 4))
+    draw_clawd(draw, 34, 168, g, blink=(f == 4), frame=f)
 
     dish_x, dish_y = 228, 264
     draw.arc([dish_x, dish_y, dish_x + 102, dish_y + 34], 0, 180, fill=LIGHT_BLUE, width=4)
@@ -5129,7 +5073,7 @@ def sc_sublimating(draw, f, img):
 
 
 def sc_sussing(draw, f, img):
-    draw_clawd(draw, 40, 165, g)
+    draw_clawd(draw, 40, 165, g, frame=f)
     lens_x = 220 + f * 20
     lens_y = 190
     draw.ellipse([lens_x-20, lens_y-20, lens_x+20, lens_y+20], outline=DARK_BROWN, width=3)
@@ -5140,7 +5084,7 @@ def sc_sussing(draw, f, img):
 
 
 def sc_swirling(draw, f, img):
-    draw_clawd(draw, 120, 175, g)
+    draw_clawd(draw, 120, 175, g, frame=f)
     cx2, cy2 = 120 + 4 * g, 100
     for i in range(20):
         a = math.radians(i * 30 + f * 25)
@@ -5153,7 +5097,7 @@ def sc_swirling(draw, f, img):
 
 def sc_symbioting(draw, f, img):
     gap = [20, 15, 10, 5, 2, 0][f]
-    draw_clawd(draw, 80 - gap, 170, g)
+    draw_clawd(draw, 80 - gap, 170, g, frame=f)
     dx = 220 + gap
     for gy2 in range(8):
         for gx2 in range(8):
@@ -5166,7 +5110,7 @@ def sc_symbioting(draw, f, img):
 
 
 def sc_synthesizing(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     kx, ky = 220, 240
     draw.rectangle([kx, ky, kx+150, ky+40], fill=BLACK)
     for i in range(10):
@@ -5182,7 +5126,7 @@ def sc_synthesizing(draw, f, img):
 
 
 def sc_thundering(draw, f, img):
-    draw_clawd(draw, 120, 185, g)
+    draw_clawd(draw, 120, 185, g, frame=f)
     for cx2, cy2 in [(100, 40), (200, 30), (300, 45)]:
         draw.ellipse([cx2-30, cy2-15, cx2+30, cy2+15], fill=DARK_GRAY)
         draw.ellipse([cx2-20, cy2-25, cx2+20, cy2+5], fill=DARK_GRAY)
@@ -5193,7 +5137,7 @@ def sc_thundering(draw, f, img):
 
 
 def sc_tinkering(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     draw.rectangle([220, 260, 380, 272], fill=BROWN)
     items = [(230, 240, GRAY), (270, 245, BLUE), (310, 242, GREEN), (350, 248, RED)]
     for ix, iy, ic in items:
@@ -5206,7 +5150,7 @@ def sc_tinkering(draw, f, img):
 
 def sc_tomfoolering(draw, f, img):
     bounce = [0, -10, -18, -10, 0, 5][f]
-    draw_clawd(draw, 130, 170 + bounce, g)
+    draw_clawd(draw, 130, 170 + bounce, g, frame=f)
     hx = 130 + g
     hy = 170 + bounce - g
     draw.polygon([(hx, hy), (hx+3*g, hy-2*g), (hx+g, hy)], fill=RED)
@@ -5217,7 +5161,7 @@ def sc_tomfoolering(draw, f, img):
 
 def sc_topsy_turvying(draw, f, img):
     flip = f * 30
-    draw_clawd(draw, 130, 170, g)
+    draw_clawd(draw, 130, 170, g, frame=f)
     for i in range(4):
         a = math.radians(flip + i * 90)
         r = 80
@@ -5228,7 +5172,7 @@ def sc_topsy_turvying(draw, f, img):
 
 
 def sc_transmuting(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     bx2, by2 = 260, 200
     lead_w = max(0, 50 - f * 10)
     gold_w = min(50, f * 10)
@@ -5245,7 +5189,7 @@ def sc_transmuting(draw, f, img):
 
 
 def sc_twisting(draw, f, img):
-    draw_clawd(draw, 120, 175, g)
+    draw_clawd(draw, 120, 175, g, frame=f)
     cx2, cy2 = 300, 160
     sz = 15
     offset = f * 3
@@ -5262,7 +5206,7 @@ def sc_undulating(draw, f, img):
     bob = [8, 2, -6, -10, -4, 4][f]
     clawd_x = 44
     clawd_y = 162 + bob
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
     base_y = 162
     wave_specs = [
@@ -5298,7 +5242,7 @@ def sc_undulating(draw, f, img):
 
 
 def sc_unfurling(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     sx2, sy2 = 230, 120
     unroll = f * 25
     draw.rectangle([sx2, sy2, sx2+8, sy2+150], fill=DARK_BROWN)
@@ -5311,7 +5255,7 @@ def sc_unfurling(draw, f, img):
 
 
 def sc_unravelling(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     bx2, by2 = 280, 200
     br = max(5, 30 - f * 5)
     draw.ellipse([bx2-br, by2-br, bx2+br, by2+br], fill=RED)
@@ -5328,7 +5272,7 @@ def sc_unravelling(draw, f, img):
 
 def sc_vibing(draw, f, img):
     sway = [-3, 0, 3, 0, -3, 0][f]
-    draw_clawd(draw, 130 + sway, 170, g)
+    draw_clawd(draw, 130 + sway, 170, g, frame=f)
     hx = 130 + sway
     hy = 170
     draw.arc([hx+g, hy-g, hx+7*g, hy+g], 180, 360, fill=DARK_GRAY, width=3)
@@ -5344,7 +5288,7 @@ def sc_vibing(draw, f, img):
 
 def sc_wandering(draw, f, img):
     wx = 30 + f * 15
-    draw_clawd(draw, wx, 175, g)
+    draw_clawd(draw, wx, 175, g, frame=f)
     for i in range(8):
         dx = wx - 10 - i * 15
         if dx > 5:
@@ -5356,7 +5300,7 @@ def sc_wandering(draw, f, img):
 
 
 def sc_whirring(draw, f, img):
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
     draw_gear(draw, 260, 180, 25, f)
     draw_gear(draw, 320, 210, 18, f + 1)
     draw_gear(draw, 280, 240, 15, f + 2)
@@ -5370,7 +5314,7 @@ def sc_whirring(draw, f, img):
 
 def sc_wibbling(draw, f, img):
     wobble = [0, 4, 6, 4, 0, -4][f]
-    draw_clawd(draw, 130 + wobble, 170, g)
+    draw_clawd(draw, 130 + wobble, 170, g, frame=f)
     for i in range(3):
         wy = 175 + i * g * 2
         wave = int(4 * math.sin((wy + f * 20) * 0.1))
@@ -5380,7 +5324,7 @@ def sc_wibbling(draw, f, img):
 
 def sc_wizarding(draw, f, img):
     clawd_x, clawd_y = 120, 175
-    draw_clawd(draw, clawd_x, clawd_y, g)
+    draw_clawd(draw, clawd_x, clawd_y, g, frame=f)
 
     robe_left = clawd_x - 2 * g
     robe_right = clawd_x + 10 * g
@@ -5421,7 +5365,7 @@ def sc_wizarding(draw, f, img):
 
 
 def sc_wrangling(draw, f, img):
-    draw_clawd(draw, 30, 165, g)
+    draw_clawd(draw, 30, 165, g, frame=f)
     lx = 30 + 10 * g + 5
     ly = 165 + g
     rope_r = 30 + f * 3
@@ -5435,7 +5379,7 @@ def sc_wrangling(draw, f, img):
 
 
 def sc_whirlpooling(draw, f, img):
-    draw_clawd(draw, 120, 160, g)
+    draw_clawd(draw, 120, 160, g, frame=f)
     cx2, cy2 = 120 + 4 * g, 300
     for i in range(30):
         a = math.radians(i * 25 + f * 20)
@@ -5501,7 +5445,7 @@ def sc_roosting(draw, f, img):
 
     clawd_x = 238
     clawd_y = 146 + settle
-    draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
     for i, (fx, fy) in enumerate([(194, 210), (186, 226), (326, 216), (346, 206)]):
         drift = ((f + i) % 3) * 3
@@ -5518,7 +5462,7 @@ def sc_jitterbugging(draw, f, img):
     """Energetic swing dance with bouncing and a dance floor."""
     bounce = [0, -15, -5, 0, -15, -5][f]
     sway = [-10, 5, 10, -5, -10, 5][f]
-    draw_clawd(draw, 120 + sway, 165 + bounce, g)
+    draw_clawd(draw, 120 + sway, 165 + bounce, g, frame=f)
     # Checkered dance floor
     for i in range(8):
         for j in range(2):
@@ -5730,7 +5674,7 @@ def save_gif(frames, filename, duration=170):
 
 def sc_billowing(draw, f, img):
     """Clawd amid rolling, layered plumes that swell and unfurl outward."""
-    draw_clawd(draw, 34, 170, g, blink=(f == 3))
+    draw_clawd(draw, 34, 170, g, blink=(f == 3), frame=f)
 
     drift = [-10, -4, 4, 12, 18, 10][f]
     swell = [0, 6, 12, 18, 12, 6][f]
@@ -5775,7 +5719,7 @@ def sc_billowing(draw, f, img):
 def sc_bloviating(draw, f, img):
     """Clawd loudly over-explaining into a megaphone as speech swells outward."""
     clawd_x, clawd_y = 34, 170
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
 
     paw_x = clawd_x + 10 * g
     paw_y = clawd_y + 2 * g + g // 2
@@ -5827,7 +5771,7 @@ def sc_boondoggling(draw, f, img):
     """Clawd fusses over an overcomplicated little machine that feels impressively pointless."""
     clawd_x = 26 + [-2, 0, 2, 0, -2, 1][f]
     clawd_y = 166 + [0, -2, 0, -2, 0, -1][f]
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("tool", {"tool": "wrench"})])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("tool", {"tool": "wrench"})], frame=f)
 
     base_x, base_y = 214, 252
     draw.rectangle([base_x, base_y, base_x + 132, base_y + 12], fill=DARK_BROWN)
@@ -5884,7 +5828,7 @@ def sc_clauding(draw, f, img):
     """Clawd enters a self-referential Claude-like reply loop at a tiny terminal."""
     clawd_x = 34 + [-2, 0, 2, 0, -2, 1][f]
     clawd_y = 170 + [0, -2, 0, -2, 0, -1][f]
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
 
     term_x, term_y = 208, 98
     term_w, term_h = 146, 132
@@ -5896,7 +5840,7 @@ def sc_clauding(draw, f, img):
 
     avatar_x = term_x + 12
     avatar_y = term_y + 34
-    draw_mini_clawd(draw, avatar_x, avatar_y, grid=5, blink=(f == 2))
+    draw_mini_clawd(draw, avatar_x, avatar_y, grid=5, blink=(f == 2), frame=f)
     bubble_x = term_x + 70
     bubble_y = term_y + 36
     bubble_w = [32, 46, 60, 74, 84, 76][f]
@@ -5914,7 +5858,7 @@ def sc_clauding(draw, f, img):
         nested_w = 44 + (f - 2) * 8
         nested_h = 28 + (f - 2) * 4
         draw.rectangle([nested_x, nested_y, nested_x + nested_w, nested_y + nested_h], fill=WHITE, outline=GRAY)
-        draw_mini_clawd(draw, nested_x + 6, nested_y + 6, grid=3, blink=(f == 5))
+        draw_mini_clawd(draw, nested_x + 6, nested_y + 6, grid=3, blink=(f == 5), frame=f)
         draw.rectangle([nested_x + 20, nested_y + 10, nested_x + nested_w - 8, nested_y + 13], fill=CLAWD_ACCENT_BLUE)
         if f >= 4:
             draw.rectangle([nested_x + 20, nested_y + 18, nested_x + nested_w - 14, nested_y + 21], fill=BLACK)
@@ -5928,7 +5872,7 @@ def sc_clauding(draw, f, img):
 def sc_composing(draw, f, img):
     """Clawd writes a growing musical score on a stand, distinct from stage choreography."""
     clawd_x, clawd_y = 30, 166
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["headphones"])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["headphones"], frame=f)
 
     stand_x, stand_y = 226, 112
     sheet_w, sheet_h = 110, 92
@@ -5988,7 +5932,7 @@ def sc_dilly_dallying(draw, f, img):
     ys = [178, 170, 178, 170, 178, 170]
     cx = xs[f]
     cy = ys[f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 2))
+    draw_clawd(draw, cx, cy, g, blink=(f == 2), frame=f)
 
     trail_points = [(30, 292), (56, 284), (84, 292), (112, 284), (138, 292), (164, 286)]
     for i in range(len(trail_points) - 1):
@@ -6015,7 +5959,7 @@ def sc_dilly_dallying(draw, f, img):
 
 def sc_evaporating(draw, f, img):
     """Clawd watches a little puddle steam away into drifting vapor and heat waves."""
-    draw_clawd(draw, 34, 168, g, blink=(f == 4))
+    draw_clawd(draw, 34, 168, g, blink=(f == 4), frame=f)
 
     puddle_w = [120, 102, 84, 62, 42, 22][f]
     puddle_x = 228
@@ -6046,7 +5990,7 @@ def sc_evaporating(draw, f, img):
 def sc_frosting(draw, f, img):
     """Clawd builds frosting swirls onto a little cake with a piping bag."""
     clawd_x, clawd_y = 30, 160
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2), accessories=[("chef_hat", {"tall": True})])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2), accessories=[("chef_hat", {"tall": True})], frame=f)
 
     stand_x, stand_y = 232, 272
     draw.rectangle([stand_x + 26, stand_y - 10, stand_x + 40, stand_y + 18], fill=GRAY)
@@ -6104,7 +6048,7 @@ def sc_burrowing(draw, f, img):
 
     clawd_x = 60 + shift
     clawd_y = 146 + [2, 0, -6, -10, -6, -2][f]
-    draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd_head_only(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
     draw.ellipse(front_rim, fill=soil_mid, outline=soil_dark)
     draw.arc([front_rim[0] + 6, front_rim[1] - 4, front_rim[2] - 6, front_rim[3] - 8], 180, 340, fill=soil_light, width=2)
@@ -6142,7 +6086,7 @@ def sc_burrowing(draw, f, img):
 def sc_flambeing(draw, f, img):
     """A richer skillet flambé with layered blue heat and orange tongues of fire."""
     clawd_x, clawd_y = 30, 160
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
 
     pan_x, pan_y = 210, 236
     draw.arc([pan_x, pan_y, pan_x + 126, pan_y + 64], 0, 180, fill=DARK_GRAY, width=4)
@@ -6212,7 +6156,7 @@ def sc_flambeing(draw, f, img):
 def sc_flummoxing(draw, f, img):
     """Clawd stares at a denser problem knot while punctuation orbits in confusion."""
     clawd_x, clawd_y = 42, 166
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 2), frame=f)
     draw_sweat_drop(draw, clawd_x + 116, clawd_y - 10 + (f % 2) * 4, scale=2)
 
     knot_cx = 282
@@ -6273,7 +6217,7 @@ def sc_fluttering(draw, f, img):
 
     clawd_x = 118 + [0, 2, 0, -2, 0, 2][f]
     clawd_y = 170 + [0, -3, 0, 3, 0, -2][f]
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
     butterflies = [
         (86, 92, 12, PINK),
@@ -6304,7 +6248,7 @@ def sc_fluttering(draw, f, img):
 def sc_infusing(draw, f, img):
     """A glass vessel slowly darkens as the infusion swirls through it."""
     clawd_x, clawd_y = 34, 168
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), frame=f)
 
     cup_x, cup_y = 224, 132
     cup_w, cup_h = 98, 130
@@ -6358,7 +6302,7 @@ def sc_inferring(draw, f, img):
             draw.ellipse([px - 2, py - 2, px + 2, py + 2], fill=color)
 
     clawd_x, clawd_y = 32, 164
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["magnifier"])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["magnifier"], frame=f)
 
     board_x, board_y = 220, 110
     board_w, board_h = 126, 124
@@ -6398,7 +6342,7 @@ def sc_inferring(draw, f, img):
 def sc_julienning(draw, f, img):
     """Clawd finely slices vegetables into precise matchsticks under a taller toque."""
     clawd_x, clawd_y = 28, 162
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})], frame=f)
 
     board_x, board_y = 202, 224
     draw.polygon([
@@ -6446,7 +6390,7 @@ def sc_julienning(draw, f, img):
 def sc_kneading(draw, f, img):
     """Clawd rhythmically presses and folds a soft dough mound on a floury board."""
     clawd_x, clawd_y = 30, 164
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 4), accessories=[("chef_hat", {"tall": True})], frame=f)
 
     board_x, board_y = 224, 254
     draw.rectangle([board_x, board_y, board_x + 136, board_y + 18], fill=(214, 172, 118), outline=DARK_BROWN)
@@ -6485,7 +6429,7 @@ def sc_kneading(draw, f, img):
 def sc_leavening(draw, f, img):
     """Clawd watches dough rise in a bowl as proofing bubbles and warmth build."""
     clawd_x, clawd_y = 34, 166
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=[("chef_hat", {"tall": True})])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=[("chef_hat", {"tall": True})], frame=f)
 
     bowl_x, bowl_y = 230, 226
     draw.arc([bowl_x, bowl_y, bowl_x + 114, bowl_y + 62], 0, 180, fill=LIGHT_BLUE, width=5)
@@ -6513,7 +6457,7 @@ def sc_leavening(draw, f, img):
 
 def sc_sprouting(draw, f, img):
     """Fresh green shoots emerge with clearer seed, crack, and leaf progression."""
-    draw_clawd(draw, 36, 170, g, blink=(f == 4))
+    draw_clawd(draw, 36, 170, g, blink=(f == 4), frame=f)
     leaf_green = (150, 210, 110)
     seed_color = (110, 74, 42)
     soil_highlight = (184, 146, 108)
@@ -6579,7 +6523,7 @@ def sc_swooping(draw, f, img):
         ty = ys[i]
         tint = tint_color(CORAL, 0.34 + (f - i) * 0.08)
         draw.rectangle([tx + 20, ty + 24, tx + 74, ty + 30], fill=tint)
-    draw_clawd(draw, cx, cy, g, blink=(f == 2))
+    draw_clawd(draw, cx, cy, g, blink=(f == 2), frame=f)
     for i in range(4):
         line_y = cy + 18 + i * 10
         draw.line([cx - 42 - i * 16, line_y, cx - 8 - i * 10, line_y], fill=LIGHT_BLUE, width=2)
@@ -6598,7 +6542,7 @@ def sc_waddling(draw, f, img):
     ys = [178, 168, 178, 168, 178, 168]
     cx = xs[f]
     cy = ys[f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 3))
+    draw_clawd(draw, cx, cy, g, blink=(f == 3), frame=f)
 
     sway_arc = [(-18, 18), (14, -14), (-20, 16), (12, -12), (-16, 14), (18, -16)][f]
     draw.arc([cx - 34, cy - 34, cx + 84, cy + 50], 210, 324, fill=LIGHT_BLUE, width=2)
@@ -6620,7 +6564,7 @@ def sc_warping(draw, f, img):
     """A code-grid tunnel bends and pulls data tiles through a warp corridor."""
     cx = 44 + [0, 8, 18, 28, 34, 22][f]
     cy = 168 + [0, -2, -6, -4, 0, 2][f]
-    draw_clawd(draw, cx, cy, g, blink=(f == 3))
+    draw_clawd(draw, cx, cy, g, blink=(f == 3), frame=f)
 
     vx, vy = 292, 180
     pull = [0.12, 0.24, 0.38, 0.52, 0.44, 0.28][f]
@@ -6658,7 +6602,7 @@ def sc_warping(draw, f, img):
 def sc_whatchamacalliting(draw, f, img):
     """Clawd fusses over a nameless gadget while question marks and labels hover around it."""
     clawd_x, clawd_y = 30, 166
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3))
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), frame=f)
 
     bench_x, bench_y = 224, 252
     draw.rectangle([bench_x, bench_y, 360, bench_y + 12], fill=DARK_BROWN)
@@ -6693,7 +6637,7 @@ def sc_whatchamacalliting(draw, f, img):
 def sc_zesting(draw, f, img):
     """Clawd zesting citrus over a bowl while bright curls fall from the grater."""
     clawd_x, clawd_y = 26, 164
-    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["chef_hat"])
+    draw_clawd(draw, clawd_x, clawd_y, g, blink=(f == 3), accessories=["chef_hat"], frame=f)
 
     bowl_x, bowl_y = 258, 248
     draw.arc([bowl_x, bowl_y, bowl_x + 90, bowl_y + 40], 0, 180, fill=LIGHT_BLUE, width=4)
@@ -6732,7 +6676,7 @@ def sc_zesting(draw, f, img):
 
 def sc_sauteing(draw, f, img):
     """Clawd tossing food in a hot wok with oil splashes and flame."""
-    draw_clawd(draw, 30, 160, g)
+    draw_clawd(draw, 30, 160, g, frame=f)
 
     # Wok body
     wok_x, wok_y = 210, 235
@@ -6772,7 +6716,7 @@ def sc_scampering(draw, f, img):
     # Clawd moves right and bounces
     cx = 40 + f * 22
     bounce = [0, -14, -6, 0, -14, -6][f]
-    draw_clawd(draw, cx, 175 + bounce, g)
+    draw_clawd(draw, cx, 175 + bounce, g, frame=f)
 
     # Dust puffs trailing behind
     for i in range(min(f, 4)):
@@ -6799,7 +6743,7 @@ def sc_scampering(draw, f, img):
 
 def sc_caramelizing(draw, f, img):
     """Sugar crystals melting into golden caramel in a pan, bubbling."""
-    draw_clawd(draw, 30, 155, g)
+    draw_clawd(draw, 30, 155, g, frame=f)
 
     # Pan
     pan_x, pan_y = 200, 240
@@ -6850,14 +6794,13 @@ def frames_gesticulating():
     sym_colors = [RED, BLUE, PURPLE, YELLOW, ORANGE, GREEN, PINK, RED]
 
     for f in range(num_frames):
-        set_current_frame(f)
         img = Image.new('RGBA', (CANVAS, CANVAS), TRANS)
         draw = ImageDraw.Draw(img)
 
         sway = [-3, 0, 4, 2, -4, 1, 3, -2][f]
         clawd_x = 130 + sway
         clawd_y = 175
-        draw_clawd(draw, clawd_x, clawd_y, g)
+        draw_clawd(draw, clawd_x, clawd_y, g, frame=f, total_frames=num_frames)
 
         # Animated arm extensions (motion lines radiating from arm ends)
         la, ra = arm_poses[f]
